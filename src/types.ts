@@ -6,3 +6,34 @@ export interface Controller {
   router: IRouter
   initRoutes(): any
 }
+
+// server
+export interface IServer {
+  name?: string
+  ip: string
+}
+export interface ServerData extends IServer {
+  username?: string
+  password?: string
+  email?: string
+}
+
+// app
+export interface AppData {
+  name: string
+  server?: string
+}
+
+// module
+export interface IModule {
+  server: ServerData
+  setServer: (server: ServerData, name?: string) => void
+}
+
+// git
+export interface LocalGit extends IModule {
+  init: () => void
+  remote?: (url: string) => void
+  commit?: (message: string) => void
+  push?: (branch: string) => void
+}
