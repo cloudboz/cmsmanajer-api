@@ -56,7 +56,9 @@ class ServerService {
       }
       
       fs.writeFileSync(this.baseDir + '/config.json', JSON.stringify(config, null, 2))
+      
       this.git.commit(server.name)
+              .tag(server.name.replace(/[\W_]+/g, ""))
       
       // generate base script
       this.script.copy()
