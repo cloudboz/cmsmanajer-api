@@ -19,7 +19,7 @@ class Git {
 
   public setConfig = ({ data, type }) => {
     this.data = data
-    this.baseDir = path.resolve(__dirname, '../../../../scripts/' + data.email + this.folder[type])
+    this.baseDir = path.resolve(__dirname, '../../../../scripts/' + data.email)
   }
 
   public init = () => {
