@@ -23,7 +23,6 @@ class ServerService {
   public setData = (server: ServerData) => {
     if (server) {
       this.data = server;
-      // this.setRegistry(server.servers?.[0].serverProvider.name || "SHARED")
       this.applyConfig(server);
     }
   }
@@ -32,8 +31,6 @@ class ServerService {
     if (server) {
       this.git.setConfig({ data: server, type: "server" })
       this.script.setConfig({ data: server, type: "server" })
-      // this.modules.git.setServer(server)
-      // this.modules.git.gitea.setProject(project)
     }
   }
 
@@ -49,9 +46,18 @@ class ServerService {
   public connect = async (data?: ServerData): Promise<string> => {
     try {
       const server = data || this.data;
-      const { ip, username, password } = server
       this.baseDir = this.getBaseDirectory(server.email)
 
+      const config = {
+        name: server.name,
+        ip: server.ip,
+        username: server.username,
+        password: server.password
+      }
+      
+      fs.writeFileSync(this.baseDir + '/config.json', JSON.stringify(config, null, 2))
+      this.git.commit(server.name)
+      
       // generate base script
       this.script.copy()
                  .setIP(server.ip)
@@ -60,7 +66,7 @@ class ServerService {
       // create version
       // this.git.commit(server.name)
 
-//       this.run()
+      // this.run()
 
       return Promise.resolve("Success");
     } catch (e) {
