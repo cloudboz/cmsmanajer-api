@@ -27,11 +27,27 @@ class Git {
       cwd: this.baseDir,
     })
 
+    const configGit = 
+`# exclude scripts directory
+optimiz/
+core/`
+    fs.writeFileSync(`${this.baseDir}/.gitignore`, configGit)
+
     console.log(`git initiated in user ${this.data.email}`)
+
+    return this;
   }
 
   public commit = (message: string) => {
-    cp.execSync(`git add . && git commit -m '${message}'`, {
+    cp.execSync(`git add config.json && git commit -m '${message}'`, {
+      cwd: this.baseDir,
+    })
+
+    return this;
+  }
+
+  public tag = (name: string) => {
+    cp.execSync(`git tag ${name}`, {
       cwd: this.baseDir,
     })
   }
