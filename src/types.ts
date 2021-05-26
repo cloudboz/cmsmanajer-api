@@ -13,9 +13,10 @@ export interface IServer {
   ip: string
 }
 export interface ServerData extends IServer {
-  username?: string
-  password?: string
+  username: string
+  password: string
   email?: string
+  sshKey?: string
 }
 
 // app
@@ -31,7 +32,7 @@ export interface IModule {
 }
 
 // git
-export interface LocalGit extends IModule {
+export interface IGit {
   init: () => void
   remote?: (url: string) => void
   commit?: (message: string) => void

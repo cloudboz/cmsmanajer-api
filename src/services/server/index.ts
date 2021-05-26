@@ -2,19 +2,21 @@ import { ServerData } from "../../types";
 
 // npm modules
 import fs from 'fs-extra';
+import cp from 'child_process';
 import path from 'path';
-import Git from "./modules/git";
+import Git from "../git";
+import ScriptService from "../script";
 
 class ServerService {
   data?: ServerData
-  modules = {
-    git: new Git()
-  }
+  baseDir = null
+  git = new Git()
+  script = new ScriptService()
 
   constructor(server: ServerData) {
     if (server) {
       this.setData(server);
-      // this.applyConfigToModules(server);
+      // this.applyConfig(server);  
     }
   }
 
@@ -22,13 +24,15 @@ class ServerService {
     if (server) {
       this.data = server;
       // this.setRegistry(server.servers?.[0].serverProvider.name || "SHARED")
-      this.applyConfigToModules(server);
+      this.applyConfig(server);
     }
   }
 
-  private applyConfigToModules = (server: ServerData) => {
+  private applyConfig = (server: ServerData) => {
     if (server) {
-      // this.modules.git.local.setProject(project)
+      this.git.setConfig({ data: server, type: "server" })
+      this.script.setConfig({ data: server, type: "server" })
+      // this.modules.git.setServer(server)
       // this.modules.git.gitea.setProject(project)
     }
   }
@@ -45,37 +49,29 @@ class ServerService {
   public connect = async (data?: ServerData): Promise<string> => {
     try {
       const server = data || this.data;
-      const baseDir = this.getBaseDirectory(server.email)
+      const { ip, username, password } = server
+      this.baseDir = this.getBaseDirectory(server.email)
 
-      // change inventory
-      fs.writeFileSync(baseDir + '/optimiz/inventory', server.ip)
-
-      // change group_vars
-      const vars = `
-# ssh
-ansible_connection: ssh
-ansible_user: ${server.username}
-ansible_ssh_pass: ${server.password}
-ansible_sudo_pass: ${server.password}
-ansible_ssh_private_key_file: files/sgnd.pem
-ansible_python_interpreter: /usr/bin/python3
-
-# users
-pass_auth: PasswordAuthentication yes
-pubkey_auth: PubkeyAuthentication yes
-      `
-
-      fs.writeFileSync(baseDir + '/optimiz/group_vars/all.yml', vars)
+      // generate base script
+      this.script.copy()
+                 .setIP(server.ip)
+                 .setVars(server)
 
       // create version
-      this.modules.git.commit(server.name)
+      // this.git.commit(server.name)
 
+//       this.run()
 
       return Promise.resolve("Success");
     } catch (e) {
       return Promise.reject(e?.message);
     }
+    
   }
+
+  public run = () => cp.execSync('ansible-playbook main.yml', {
+    cwd: this.baseDir + '/optimiz'
+  })
 
 }
 
