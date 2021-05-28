@@ -5,12 +5,16 @@ import cors from 'cors';
 // Middleware
 
 // Controllers
-import ServerController from './controllers/server'
+import { 
+  ServerController,
+  AppController 
+} from './controllers'
 
 const app = new App({
   port: 5000,
   controllers: [
-    new ServerController()
+    new ServerController(),
+    new AppController()
   ],
   plugins: [],
   middleWares: [

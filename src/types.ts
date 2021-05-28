@@ -9,8 +9,8 @@ export interface Controller {
 
 // server
 export interface IServer {
-  name?: string
-  ip: string
+  name: string
+  ip?: string
 }
 export interface ServerData extends IServer {
   username: string
@@ -19,10 +19,19 @@ export interface ServerData extends IServer {
   sshKey?: string
 }
 
+export interface ServerConfig {
+  name: string
+  ip: string
+  username: string
+  password: string
+  sshKey?: string
+}
+
 // app
 export interface AppData {
   name: string
-  server?: string
+  server: IServer
+  email?: string
 }
 
 // module
