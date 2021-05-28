@@ -60,15 +60,11 @@ class ServerService {
       this.git.commit(server.name)
               .tag(server.name.replace(/[\W_]+/g, ""))
       
-      // generate base script
+      // generate base script then run
       this.script.copy()
                  .setIP(server.ip)
                  .setVars(server)
-
-      // create version
-      // this.git.commit(server.name)
-
-      // this.run()
+                //  .run('main')
 
       return Promise.resolve("Success");
     } catch (e) {
@@ -76,11 +72,6 @@ class ServerService {
     }
     
   }
-
-  public run = () => cp.execSync('ansible-playbook main.yml', {
-    cwd: this.baseDir + '/optimiz'
-  })
-
 }
 
 export default ServerService;
