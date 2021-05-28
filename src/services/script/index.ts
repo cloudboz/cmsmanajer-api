@@ -1,4 +1,5 @@
 import fs from 'fs-extra';
+import cp from 'child_process';
 import path from 'path';
 
 class ScriptService {
@@ -60,6 +61,10 @@ pubkey_auth: PubkeyAuthentication yes`
 
     return this
   }
+
+  public run = (file) => cp.execSync(`ansible-playbook ${file}.yml`, {
+    cwd: this.baseDir + '/optimiz'
+  })
 }
 
 export default ScriptService;
