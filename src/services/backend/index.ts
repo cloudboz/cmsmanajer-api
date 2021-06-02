@@ -11,7 +11,7 @@ const agent = new https.Agent({
 class BackendService {
 
   httpRequest = axios.create({
-    baseURL: BACKEND_ENDPOINT + "/api",
+    baseURL: BACKEND_ENDPOINT,
   });
 
   constructor({ header }: { header: any }) {
@@ -31,17 +31,17 @@ class BackendService {
       const fieldQuery: string[] = [];
 
       for (const [key, value] of Object.entries(query)) {
-        if (["limit", "orderBy", "select", "skip"].includes(key)) {
+        if (!["limit", "orderBy", "select", "skip"].includes(key)) {
           nonFieldQuery.push(`${key}=${value}`);
         } else {
           fieldQuery.push(`where[${key}]=${value}`);
         }
       }
 
-      let queryParams = "?" + fieldQuery.join("&");
-      if (nonFieldQuery.length) {
-        queryParams += "&" + nonFieldQuery.join("&");
-      }
+      let queryParams = "?" + nonFieldQuery.join("&");
+      // if (nonFieldQuery.length) {
+      //   queryParams += "&" + nonFieldQuery.join("&");
+      // }
       return queryParams;
     }
     return "";

@@ -7,6 +7,17 @@ export interface Controller {
   initRoutes(): any
 }
 
+// user
+export interface UserData {
+  id?: string
+  email: string
+  password?: string
+}
+
+export interface RegisterData extends UserData {
+  name: string
+}
+
 // server
 export interface IServer {
   name: string
@@ -30,6 +41,7 @@ export interface ServerConfig {
 // app
 export interface AppData {
   name: string
+  type: string
   server: IServer
   email?: string
 }
@@ -46,4 +58,19 @@ export interface IGit {
   remote?: (url: string) => void
   commit?: (message: string) => void
   push?: (branch: string) => void
+}
+
+export interface IRegister {
+  id?: string
+  email: string
+  password: string
+  name: string
+  country?: string
+  province?: string
+  job?: string
+}
+
+export interface ILogin {
+  email: string
+  password: string
 }

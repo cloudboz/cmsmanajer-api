@@ -9,12 +9,14 @@ import {
   ServerController,
   AppController 
 } from './controllers'
+import UserController from './controllers/user';
 
 const app = new App({
   port: 5000,
   controllers: [
     new ServerController(),
-    new AppController()
+    new AppController(),
+    new UserController()
   ],
   plugins: [],
   middleWares: [
