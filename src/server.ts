@@ -3,13 +3,14 @@ import express from 'express'
 import cors from 'cors';
 
 // Middleware
+import authentication from './middlewares/authentication'
 
 // Controllers
 import { 
   ServerController,
-  AppController 
+  AppController,
+  UserController
 } from './controllers'
-import UserController from './controllers/user';
 
 const app = new App({
   port: 5000,
@@ -22,7 +23,8 @@ const app = new App({
   middleWares: [
     express.json({ limit: '50mb' }),
     express.urlencoded({ extended: true }),
-    cors()
+    cors(),
+    authentication
   ]
 })
 
