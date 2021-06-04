@@ -11,9 +11,10 @@ interface User {
 const authentication = async (req: Request & User, res: Response, next: () => void )  => {
 
     const nonSecurePaths = ['/', '/login', '/register'];
-    if (nonSecurePaths.includes(req.path)) return next();
+    const path = req.path.replace('/v1', '')
+    if (nonSecurePaths.includes(path)) return next();
 
-    const token: string | string[] = req.headers["x-access-token"] || req.headers["authorization"].replace('Bearer ', '');
+    const token: string = req.headers["authorization"]?.replace('Bearer ', '')
     //if no token found, return response (without going to the next middelware)
     if (!token){
       return res.status(401).json("Access denied. No token provided.");
