@@ -29,8 +29,9 @@ class App {
 
     private routes(controllers: { forEach: (arg0: (controller: any) => void) => void; }) {
         controllers.forEach(controller => {
-            this.app.use('/api', controller.router)
+            this.app.use('/v1', controller.router)
         })
+        this.app.use('/', express.static('public'));
     }
 
     private template() {

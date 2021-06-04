@@ -23,6 +23,7 @@ const app = new App({
   middleWares: [
     express.json({ limit: '50mb' }),
     express.urlencoded({ extended: true }),
+    express.static('public'),
     cors(),
     authentication
   ]

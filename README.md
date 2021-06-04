@@ -1,6 +1,28 @@
 # CMS Manajer
 
-### example
+> Gateway API for CMS Manajer
+
+## Getting Started
+
+Getting up and running is as easy as 1, 2, 3.
+
+1. Make sure you have [NodeJS](https://nodejs.org/) and [npm](https://www.npmjs.com/) installed.
+2. Install your dependencies
+
+    ```
+    cd path/to/cmsmanajer-generator
+    npm install
+    ```
+
+3. Start your app
+
+    ```
+    npm run dev
+    ```
+
+Application will run on port **5000**
+
+## example
 #### prerequisite for example request
 
 **1. folder structure**
@@ -9,15 +31,15 @@ cadabra-cmsmanajer-app
 ├── cmsmanajer-generator
 ├── optimiz
 └── scripts
-    └── test
-        └── config.json
+    └── {{ id }}
+        └── user.json
 ```
 **2. initialized git in folder test**
 
 
 #### example request
 ```
-POST http://localhost:5000/api/server
+POST http://localhost:5000/api/servers
 Content-Type: application/json
 
 {
