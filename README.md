@@ -22,7 +22,7 @@ Getting up and running is as easy as 1, 2, 3.
 
 Application will run on port **5000**
 
-## example
+## Example
 #### prerequisite for example request
 
 **1. folder structure**
@@ -34,19 +34,5 @@ cadabra-cmsmanajer-app
     └── {{ id }}
         └── user.json
 ```
-**2. initialized git in folder test**
 
-
-#### example request
-```
-POST http://localhost:5000/api/servers
-Content-Type: application/json
-
-{
-  "name": "server A",
-  "ip": "192.168.3.10",
-  "username": "ubuntu",
-  "password": "4esz3wa2q10p",
-  "email": "test"
-}
-```
+For more information see [API Documentation](https://documenter.getpostman.com/view/12745325/TzY4euFZ).
