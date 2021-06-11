@@ -2,6 +2,8 @@ import AuthService from './auth'
 import BackendService from './backend';
 import ServerService from './server';
 import AppService from './app'
+import DatabaseService from './database'
+import SystemUserService from './user'
 import ScriptService from './script'
 
 export {
@@ -9,5 +11,7 @@ export {
   BackendService,
   ScriptService,
   ServerService,
-  AppService
+  AppService,
+  DatabaseService,
+  SystemUserService
 }

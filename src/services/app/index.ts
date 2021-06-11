@@ -1,16 +1,38 @@
-import { AppData, ServerConfig } from "../../types";
+import { AppConfig, AppData, ServerConfig, SystemUserData } from "../../types";
 
 // npm modules
 import fs from 'fs-extra';
 import path from 'path';
 import Git from "../git";
 import ScriptService from "../script";
+import { paramCase } from "param-case";
 
 class AppService {
   data?: AppData
   baseDir = null
-  git = new Git()
   script = new ScriptService()
+  tags = {
+    create: {
+      lamp: {
+        full: "lamp-full-install",
+        single: "lamp-create-single-app"
+      },
+      lemp: {
+        full: "lemp-full-install",
+        single: "lemp-create-single-app"
+      }
+    },
+    delete: {
+      lamp: {
+        full: "lamp-full-uninstall",
+        single: "lamp-delete-single-app"
+      },
+      lemp: {
+        full: "lemp-full-uninstall",
+        single: "lemp-delete-single-app"
+      }
+    }
+  }
 
   constructor(app: AppData) {
     if (app) {
@@ -28,15 +50,14 @@ class AppService {
 
   private applyConfig = (app: AppData) => {
     if (app) {
-      this.git.setConfig({ data: app, type: "app" })
-      this.script.setConfig({ data: app, type: "app" })
+      this.script.setConfig({ data: app })
     }
   }
 
-  public getBaseDirectory = (email?: string, additionalPath?: string): string => {
-    email = email || this.data?.email;
+  public getBaseDirectory = (id?: string, additionalPath?: string): string => {
+    id = id || this.data?.user.id;
 
-    let baseDirectory = path.resolve(__dirname, '../../../../scripts/' + email);
+    let baseDirectory = path.resolve(__dirname, '../../../../scripts/' + id);
     if (additionalPath) baseDirectory += additionalPath;
 
     return baseDirectory;
@@ -45,21 +66,40 @@ class AppService {
   public create = async (data?: AppData): Promise<string> => {
     try {
       const app = data || this.data;
-      this.baseDir = this.getBaseDirectory(app.email)
+      this.baseDir = this.getBaseDirectory(app.user.id)
 
-      // take server config
-      const tag = app.server.name.replace(/[\W_]+/g, "")      
-      this.git.use(tag)
-      const server: ServerConfig = JSON.parse((fs.readFileSync(this.baseDir + '/config.json')).toString())
+      const { username, password } = app.systemUser
+      const { title, username: wpUser, password: wpPass, email } = app.wordpress || {}
       
+      const sysUser = {
+        username,
+        password
+      }
+
+      let tags = this.tags.create[app.type][app.init ? "full" : "single"]
+      if(app.wordpress) tags = "wp-" + tags
+
       // generate base script then run
       this.script.copy()
-                 .setIP(server.ip)
-                 .setVars(server)
-                //  .run(app.type)
-
-      this.git.rm()
-
+                  .setIP(app.server.ip)
+                  .setGroupVars({
+                    ansible: sysUser,
+                    app: {
+                      name: app.name,
+                      domain: app.domain,
+                    },
+                    wordpress: {
+                      title,
+                      username: wpUser,
+                      password: wpPass,
+                      email
+                    },
+                    database: {
+                      password: app.server.dbRootPass
+                    }
+                  })
+                 .run(tags)
+                
       return Promise.resolve("Success");
     } catch (e) {
       return Promise.reject(e?.message);
