@@ -1,4 +1,4 @@
-import { ServerData } from "../../types";
+import { ServerData, SystemUserData } from "../../types";
 
 // npm modules
 import fs from 'fs-extra';
@@ -10,10 +10,9 @@ import ScriptService from "../script";
 class ServerService {
   data?: ServerData
   baseDir = null
-  git = new Git()
   script = new ScriptService()
 
-  constructor(server: ServerData) {
+  constructor(server?: ServerData) {
     if (server) {
       this.setData(server);
       // this.applyConfig(server);  
@@ -29,15 +28,14 @@ class ServerService {
 
   private applyConfig = (server: ServerData) => {
     if (server) {
-      this.git.setConfig({ data: server, type: "server" })
-      this.script.setConfig({ data: server, type: "server" })
+      this.script.setConfig({ data: server })
     }
   }
 
-  public getBaseDirectory = (email?: string, additionalPath?: string): string => {
-    email = email || this.data?.email;
+  public getBaseDirectory = (id?: string, additionalPath?: string): string => {
+    id = id || this.data?.user.id;
 
-    let baseDirectory = path.resolve(__dirname, '../../../../scripts/' + email);
+    let baseDirectory = path.resolve(__dirname, '../../../../scripts/' + id);
     if (additionalPath) baseDirectory += additionalPath;
 
     return baseDirectory;
@@ -46,24 +44,62 @@ class ServerService {
   public connect = async (data?: ServerData): Promise<string> => {
     try {
       const server = data || this.data;
-      this.baseDir = this.getBaseDirectory(server.email)
-
-      const config = {
-        name: server.name,
-        ip: server.ip,
-        username: server.username,
-        password: server.password
+      this.baseDir = this.getBaseDirectory(server.user.id)
+      
+      // this.git.commit(server.id)
+      //         .tag(server.id)
+      
+      const sysUser = {
+        username: server.systemUser.username,
+        password: server.systemUser.password,
+        sshKey: server.systemUser.sshKey
       }
-      
-      fs.writeFileSync(this.baseDir + '/config.json', JSON.stringify(config, null, 2))
-      
-      this.git.commit(server.name)
-              .tag(server.name.replace(/[\W_]+/g, ""))
-      
+
       // generate base script then run
       this.script.copy()
                  .setIP(server.ip)
-                 .setVars(server)
+                 .setGroupVars({ ansible: sysUser })
+                //  .run('connect-server')
+
+      return Promise.resolve("Success");
+    } catch (e) {
+      return Promise.reject(e?.message);
+    }
+  }
+
+  public createUser = async (data?: ServerData): Promise<string> => {
+    try {
+      const server = data || this.data;
+      this.baseDir = this.getBaseDirectory(server.user.id)
+
+      // generate base script
+      this.script.copy()
+                 .setIP(server.ip)
+                //  .setGroupVars(server)
+
+      // delete database
+                //  .setVars()
+                //  .run('main')
+
+      return Promise.resolve("Success");
+    } catch (e) {
+      return Promise.reject(e?.message);
+    }
+    
+  }
+
+  public delete = async (data?: ServerData): Promise<string> => {
+    try {
+      const server = data || this.data;
+      this.baseDir = this.getBaseDirectory(server.user.id)
+
+      // generate base script
+      this.script.copy()
+                 .setIP(server.ip)
+                //  .setGroupVars(server)
+
+      // delete database
+                //  .setVars()
                 //  .run('main')
 
       return Promise.resolve("Success");
