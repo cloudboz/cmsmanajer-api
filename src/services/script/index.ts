@@ -1,14 +1,14 @@
 import fs from 'fs-extra';
 import cp from 'child_process';
 import path from 'path';
+import crypto from 'crypto';
+import yaml, { parse } from 'yaml';
+import { GroupVars, GroupVarsArgs } from '../../types';
+import { paramCase } from "param-case";
 
 class ScriptService {
   baseDir: string = null
   userDir: string = null
-  folder = {
-    server: "/optimiz",
-    app: "/core"
-  }
 
   constructor(config?) {
     if(config)
@@ -18,9 +18,9 @@ class ScriptService {
   /**
    * setConfig
    */
-  public setConfig({ data, type }) {
-    this.baseDir = path.resolve(__dirname, '../../../../' + this.folder[type])
-    this.userDir = path.resolve(__dirname, '../../../../scripts/' + data.email + this.folder[type])
+  public setConfig({ data }) {
+    this.baseDir = path.resolve(__dirname, '../../../../core')
+    this.userDir = path.resolve(__dirname, '../../../../scripts/core' + data.user.id)
   }
 
   /**
@@ -35,36 +35,55 @@ class ScriptService {
    * Change IP address in inventory
    */
   public setIP = (ip: string) => {
-    fs.writeFileSync(this.userDir + '/inventory', ip)
+    fs.writeFileSync(this.userDir + '/ansible.host', ip)
     return this
   }
 
   /**
-   * setVars
+   * setGroupVars
    */
-  public setVars({ username, password, sshKey = "files/sgnd.pem" }) {
-    // change group_vars
-    const vars = 
-`# ssh
-ansible_connection: ssh
-ansible_user: ${username}
-ansible_ssh_pass: ${password}
-ansible_sudo_pass: ${password}
-ansible_ssh_private_key_file: ${sshKey}
-ansible_python_interpreter: /usr/bin/python3
+  public setGroupVars({ ansible, user, app, database, wordpress }: GroupVarsArgs) {
+    const file = fs.readFileSync(this.userDir + '/group_vars/all.yml', "utf8");
+    const doc = yaml.parseDocument(file);
+    const content = doc.contents.toString();
+    const parsed: GroupVars = JSON.parse(content);
 
-# users
-pass_auth: PasswordAuthentication yes
-pubkey_auth: PubkeyAuthentication yes`
-    
-    fs.writeFileSync(this.userDir + '/group_vars/all.yml', vars)
+
+    // change group_vars
+    const vars: GroupVars = {
+      ...parsed,
+      ansible_user: ansible.username || "ubuntu",
+      ansible_ssh_pass: ansible.password || this.generatePassword(),
+      ansible_sudo_pass: ansible.password || this.generatePassword(),
+      ansible_ssh_private_key_file: 'files/' + ansible.sshKey,
+      username: user?.username,
+      password: user?.password && this.hashPassword(user?.password),
+      mysql_root_password: database?.password || this.generatePassword(),
+      app_username: app?.username || this.randomString(4),
+      app_password: app?.password || this.generatePassword(),
+      app_database: app?.name && paramCase(app?.name),
+      app_domain: app?.domain,
+      app_config: app?.domain + '.conf',
+      wordpress_home_url: 'http://' + app?.domain,
+      wordpress_site_title: wordpress?.title,
+      wordpress_admin_user: wordpress?.username,
+      wordpress_admin_user_pass: wordpress?.password,
+      wordpress_admin_email: wordpress?.email
+    } 
+    fs.writeFileSync(this.userDir + '/group_vars/all.yml', yaml.stringify(vars))
 
     return this
   }
 
-  public run = (file) => cp.execSync(`ansible-playbook ${file}.yml`, {
-    cwd: this.baseDir + '/optimiz'
+  public run = (tag: string) => cp.execSync(`ansible-playbook cman.yml --tags "${tag}"`, {
+    cwd: this.userDir
   })
+
+  private hashPassword = (password: string) => (cp.execSync(`mkpasswd -m sha-512 "${password}"`)).toString('hex')
+
+  public generatePassword = () => (crypto.randomBytes(15)).toString('base64')
+
+  public randomString = (n: number) => (crypto.randomBytes(n)).toString('hex')
 }
 
 export default ScriptService;

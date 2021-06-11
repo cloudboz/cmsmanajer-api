@@ -1,10 +1,17 @@
-import { IRouter, Request } from 'express'
+import { IRouter, Request as ERequest } from 'express'
 
+export interface Request extends ERequest {
+  user?: UserData
+}
 // controller
 export interface Controller {
   name?: string
   router: IRouter
   initRoutes(): any
+}
+
+export interface Data {
+  user?: UserData
 }
 
 // user
@@ -19,31 +26,70 @@ export interface RegisterData extends UserData {
 }
 
 // server
-export interface IServer {
-  name: string
-  ip?: string
-}
-export interface ServerData extends IServer {
-  username: string
-  password: string
-  email?: string
+export interface ServerData extends Data {
+  id?: string
+  name?: string
+  ip: string
+  stack?: string
   sshKey?: string
+  systemUser?: SystemUserData
+  dbRootPass?: string
 }
 
 export interface ServerConfig {
-  name: string
-  ip: string
-  username: string
+  id: string
+  username?: string
   password: string
   sshKey?: string
 }
 
 // app
-export interface AppData {
-  name: string
-  type: string
-  server: IServer
+export interface Wordpress {
+  title?: string
+  username?: string
+  password?: string
   email?: string
+}
+export interface AppData extends Data {
+  id?: string
+  name: string
+  type?: string
+  domain?: string
+  createUser?: boolean
+  init?: Boolean
+  server: ServerData
+  systemUser?: SystemUserData
+  username?: String
+  password?: String
+  wordpress?: Wordpress
+}
+
+export interface AppConfig {
+  id: string
+}
+
+// database
+export interface DatabaseData extends Data {
+  id?: string
+  name?: string
+  username?: string
+  password?: string
+  appId?: string
+  server: ServerData
+}
+
+export interface DatabaseConfig {
+  id: string
+  password: string
+}
+
+// sysuser
+export interface SystemUserData extends Data {
+  id?: string
+  username?: string
+  password?: string
+  sshKey?: string
+  server?: ServerData
 }
 
 // module
@@ -73,4 +119,47 @@ export interface IRegister {
 export interface ILogin {
   email: string
   password: string
+}
+
+interface AnsibleVars {
+  ansible_user: string
+  ansible_ssh_pass?: string
+  ansible_sudo_pass?: string
+  ansible_ssh_private_key_file?: string
+}
+
+interface WordpressVars {
+  wordpress_home_url?: string
+  wordpress_site_title?: string
+  wordpress_admin_user?: string
+  wordpress_admin_user_pass?: string
+  wordpress_admin_email?: string
+}
+
+interface AppVars {
+  app_username: string
+  app_password: string
+  app_database?: string
+  app_domain: string
+  app_config: string
+}
+
+interface UserVars {
+  username: string
+  password: string
+}
+
+interface MySQLRootVars {
+  mysql_root_password: string
+}
+export interface GroupVars extends AnsibleVars, AppVars, UserVars, MySQLRootVars, WordpressVars {
+  
+}
+
+export interface GroupVarsArgs {
+  ansible: { username?: string, password?: string, sshKey?: string }
+  user?: UserVars
+  database?: { password: string }
+  app?: { name: string, username?: string, password?: string, domain?: string }
+  wordpress?: { title: string, username: string, password: string, email: string }
 }

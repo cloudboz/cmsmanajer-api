@@ -14,7 +14,7 @@ class BackendService {
     baseURL: BACKEND_ENDPOINT,
   });
 
-  constructor({ header }: { header: any }) {
+  constructor({ header }: any) {
     this.setHeader(header);
   }
 
