@@ -2,12 +2,12 @@ import * as express from 'express'
 import Joi from 'joi';
 
 // types
-import { Controller, ILogin, IRegister } from '../types'
-import { Request, Response } from 'express'
+import { Request, Controller, ILogin, IRegister } from '../types'
+import { Response } from 'express'
 
 
 // services
-import { BackendService, AuthService } from '../services'
+import { BackendService, AuthService, SystemUserService } from '../services'
 
 // config
 import { BACKEND_ACCESS_TOKEN } from "../../config/global.json";
@@ -28,6 +28,7 @@ class UserController implements Controller {
   public initRoutes() {
     this.router.post("/register", this.register);
     this.router.post("/login", this.login);
+    this.router.post("/users", this.createSysUser)
   }
 
   public register = async (req: Request, res: Response) => {
@@ -70,8 +71,8 @@ class UserController implements Controller {
         }
       })
 
-      // const auth = new AuthService(req.body)
-      // await auth.register()
+      const auth = new AuthService(data)
+      await auth.register()
 
       return res.status(200).json({ message: "success", user })
     } catch (e) {
@@ -105,15 +106,42 @@ class UserController implements Controller {
 
       if(!exist) return res.status(404).json({ message: "user not found" })
 
-      const { data: user } = await this.backend.create({
-        tableName: "authentication",
+      try {
+        const { data: user } = await this.backend.create({
+          tableName: "authentication",
+          body: {
+            strategy: "local",
+            ...data
+          }
+        })
+        return res.status(200).json({ message: "success", user })
+      } catch (error) {
+        return res.status(500).json({ message: "Invalid login." });
+      }
+    } catch (e) {
+      console.log("Failed to login ", e);
+      return res.status(500).json({ message: e });
+    }
+  };
+
+  public createSysUser = async (req: Request, res: Response) => {
+    const data = req.body
+
+    try {
+      await this.backend.create({
+        tableName: "systemusers",
         body: {
-          strategy: "local",
-          ...data
+          username: data.username,
+          serverId: data.server.id
         }
       })
 
-      return res.status(200).json({ message: "success", user })
+      data.user = req.user
+
+      const sysUser = new SystemUserService(data)
+      await sysUser.create()
+
+      return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to login ", e);
       return res.status(500).json({ message: e });

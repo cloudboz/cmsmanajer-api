@@ -6,7 +6,6 @@ import Git from '../git';
 class AuthService {
   data?: RegisterData = null
   baseDir? = null
-  git = new Git()
 
   constructor(user) {
     if (user) {
@@ -22,20 +21,24 @@ class AuthService {
   }
 
   private applyConfig = (user: RegisterData) => {
-    if (user) {
-      this.git.setConfig({ data: user, type: "user" })
-    }
+    if (user) {}
   }
 
   private createBaseDirectory = (user?: RegisterData): void => {
-    const fullPath = path.resolve(__dirname, '../../../../scripts/' + user.email);
+    const fullPath = path.resolve(__dirname, '../../../../scripts/' + user.id);
     if (!fs.existsSync(fullPath)) {
       fs.mkdirSync(fullPath);
     }
+    this.baseDir = fullPath
   }
 
   private createConfigFile = () => {
-    fs.writeFileSync(`${this.baseDir}/.gitignore`, "")
+    const ignore = 
+`optimiz/
+core/
+cleanup/
+databs/`
+    fs.writeFileSync(`${this.baseDir}/.gitignore`, ignore)
   }
 
   /**
@@ -45,9 +48,12 @@ class AuthService {
     const user = data || this.data;
 
     this.createBaseDirectory(user);
-    this.createConfigFile()
+    // this.createConfigFile()
 
-    this.git.init().commit("base")
+  }
+
+  public verifyEmail = async () => {
+
   }
 }
 
