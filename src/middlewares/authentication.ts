@@ -5,7 +5,7 @@ import { SECRET_KEY } from '../../config/global.json'
 import { UserData } from '../types'
 
 interface User {
-  user: UserData;
+  user: { id: string };
 }
 
 const authentication = async (req: Request & User, res: Response, next: () => void )  => {
@@ -23,7 +23,9 @@ const authentication = async (req: Request & User, res: Response, next: () => vo
     try {
       //if can verify the token, set req.user and pass to next middleware
       const decoded = await jwt.verify(token, SECRET_KEY);
-      req.user.id = decoded.sub;
+      req.user = {
+        id: decoded.sub
+      };
 
       return next();
     } catch (e) {
