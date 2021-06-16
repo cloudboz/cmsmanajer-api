@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon src/server.ts"
+    "dev": "nodemon src/server.ts",
+    "build": "rm -rf dist && tsc -p . && rm -rf ./dist/config && mv ./dist/src/* ./dist && rm -rf ./dist/src",
+    "production": "node dist/server.js"
   },
   "repository": {
     "type": "git",
@@ -14,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@sendgrid/mail": "^7.4.4",
     "axios": "^0.21.1",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
@@ -21,6 +24,7 @@
     "fs-extra": "^10.0.0",
     "joi": "^17.4.0",
     "jsonwebtoken": "^8.5.1",
+    "nodemailer": "^6.6.1",
     "param-case": "^3.0.4",
     "yaml": "^1.10.2"
   },
