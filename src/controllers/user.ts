@@ -28,6 +28,7 @@ class UserController implements Controller {
   public initRoutes() {
     this.router.post("/register", this.register);
     this.router.post("/login", this.login);
+    this.router.post("/verify", this.verifyEmail);
     this.router.post("/users", this.createSysUser)
   }
 
@@ -124,10 +125,50 @@ class UserController implements Controller {
     }
   };
 
+  public verifyEmail  = async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body
+
+      // get token
+      const { data: { data } } = await this.backend.find({
+        tableName: 'tokens',
+        query: {
+          token
+        }
+      })
+      
+      if(data.length){
+        // update user
+        await this.backend.patch({
+          tableName: 'users',
+          id: data[0].userId,
+          body: {
+            verified: true
+          }
+        })
+
+        // remove token
+        await this.backend.remove({
+          tableName: 'tokens',
+          id: data[0].id
+        })
+      }
+
+      return res.status(200).json({ message: "success" })
+    } catch (e) {
+      console.log("Failed to verify email ", e);
+      return res.status(500).json({ message: e });
+    }
+  }
+
   public createSysUser = async (req: Request, res: Response) => {
     const data = req.body
 
     try {
+      this.backend.setHeader({
+        Authorization: req.headers.authorization
+      })
+
       await this.backend.create({
         tableName: "systemusers",
         body: {
