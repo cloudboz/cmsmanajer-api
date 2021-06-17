@@ -163,3 +163,10 @@ export interface GroupVarsArgs {
   app?: { name: string, username?: string, password?: string, domain?: string }
   wordpress?: { title: string, username: string, password: string, email: string }
 }
+
+export interface SendgridOption {
+  from?: string
+  to: string
+  subject: string
+  html: string
+}

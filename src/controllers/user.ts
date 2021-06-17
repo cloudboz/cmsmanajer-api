@@ -1,5 +1,6 @@
 import * as express from 'express'
 import Joi from 'joi';
+import querystring from 'querystring';
 
 // types
 import { Request, Controller, ILogin, IRegister } from '../types'
@@ -51,7 +52,7 @@ class UserController implements Controller {
       const { data: { total: exist } } = await this.backend.find({
         tableName: "users",
         query: {
-          email: data.email
+          email: querystring.escape(data.email)
         }
       })
 
@@ -131,7 +132,7 @@ class UserController implements Controller {
 
       // get token
       const { data: { data } } = await this.backend.find({
-        tableName: 'tokens',
+        tableName: 'email-verifications',
         query: {
           token
         }
@@ -149,7 +150,7 @@ class UserController implements Controller {
 
         // remove token
         await this.backend.remove({
-          tableName: 'tokens',
+          tableName: 'email-verifications',
           id: data[0].id
         })
       }
