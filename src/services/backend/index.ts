@@ -31,17 +31,17 @@ class BackendService {
       const fieldQuery: string[] = [];
 
       for (const [key, value] of Object.entries(query)) {
-        if (!["limit", "orderBy", "select", "skip"].includes(key)) {
-          nonFieldQuery.push(`${key}=${value}`);
+        if (["limit", "orderBy", "select", "skip"].includes(key)) {
+          nonFieldQuery.push(`$${key}=${value}`);
         } else {
-          fieldQuery.push(`where[${key}]=${value}`);
+          fieldQuery.push(`${key}=${value}`);
         }
       }
 
-      let queryParams = "?" + nonFieldQuery.join("&");
-      // if (nonFieldQuery.length) {
-      //   queryParams += "&" + nonFieldQuery.join("&");
-      // }
+      let queryParams = "?" + fieldQuery.join("&");
+      if (nonFieldQuery.length) {
+        queryParams += "&" + nonFieldQuery.join("&");
+      }
       return queryParams;
     }
     return "";

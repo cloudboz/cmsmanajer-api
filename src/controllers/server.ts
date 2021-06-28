@@ -28,17 +28,16 @@ class ServerController implements Controller {
     this.router.get("/servers", this.getServers);
     this.router.get("/servers/:id", this.getServer);
     this.router.get("/servers/:id/apps", this.getAppsByServer);
+    this.router.get("/servers/:id/users", this.getUsersByServer);
+    // this.router.get("/servers/:id/status", this.getServerStatus);
     this.router.post("/servers", this.connectServer);
+    this.router.patch("/servers/:id", this.updateServer);
     this.router.delete("/servers/:id", this.deleteServer);
     this.router.delete("/servers/:id/database", this.uninstallDatabase);
   }
 
   public getServers = async (req: Request, res: Response) => {
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
       const { data: { data } } = await this.backend.find({
         tableName: 'servers',
         query: {
@@ -55,11 +54,7 @@ class ServerController implements Controller {
 
   public getServer = async (req: Request, res: Response) => {
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
-      const { data: { data } } = await this.backend.get({
+      const { data } = await this.backend.get({
         tableName: 'servers',
         id: req.params.id
       })
@@ -73,16 +68,32 @@ class ServerController implements Controller {
 
   public getAppsByServer = async (req: Request, res: Response) => {
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
-      const { data: { data } } = await this.backend.find({
+      const { data: { data: apps } } = await this.backend.find({
         tableName: 'apps',
         query: {
           serverId: req.params.id
         }
       })
+
+      const { data: { data: users } } = await this.backend.find({
+        tableName: 'systemusers',
+        query: {
+          serverId: req.params.id
+        }
+      })
+
+      const data = apps.map(app => {
+        const data = {
+          ...app,
+          systemUser: users.find(user => user.id == app.systemuserId)
+        }
+
+        delete data.systemuserId
+
+        return data
+      })
+
+      
 
       return res.status(200).json({ message: "success", data })
     } catch (e) {
@@ -91,15 +102,42 @@ class ServerController implements Controller {
     }
   };
 
+  public getUsersByServer = async (req: Request, res: Response) => {
+    try {
+      const { data: { data } } = await this.backend.find({
+        tableName: 'systemusers',
+        query: {
+          serverId: req.params.id
+        }
+      })
+
+      return res.status(200).json({ message: "success", data })
+    } catch (e) {
+      console.log("Failed get users ", e);
+      return res.status(500).json({ message: "Failed to get users" });
+    }
+  };
+
+  public updateServer = async (req: Request, res: Response) => {
+    try {
+      await this.backend.patch({
+        tableName: 'servers',
+        id: req.params.id,
+        body: req.body
+      })
+
+      return res.status(200).json({ message: "success" })
+    } catch (e) {
+      console.log("Failed update server ", e);
+      return res.status(500).json({ message: "Failed to update server" });
+    }
+  };
+
   public connectServer = async (req: Request, res: Response) => {
     const data: ServerData = req.body
     data.user = req.user
     
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
       const { data: createdServer } = await this.backend.create({
         tableName: 'servers',
         body: {
@@ -120,13 +158,15 @@ class ServerController implements Controller {
 
       data.systemUser.id = createdUser.id
 
+      //TODO: handle multiple server
+
       const server = new ServerService(data)
       await server.connect()
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed create project ", e);
-      return res.status(500).json({ message: "Failed to create project" });
+      console.log("Failed connect server ", e);
+      return res.status(500).json({ message: "Failed to connect server" });
     }
   };
 
@@ -134,10 +174,6 @@ class ServerController implements Controller {
     const data = req.params
 
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
       const { data: serverData } = await this.backend.get({
         tableName: 'servers',
         id: data.id
@@ -153,8 +189,8 @@ class ServerController implements Controller {
 
       return res.status(200).json({ message: "success", data })
     } catch (e) {
-      console.log("Failed create project ", e);
-      return res.status(500).json({ message: "Failed to create project" });
+      console.log("Failed delete server ", e);
+      return res.status(500).json({ message: "Failed to delete server" });
     }
   };
 
@@ -162,10 +198,6 @@ class ServerController implements Controller {
     const { id } = req.params
 
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
       const { data: server } = await this.backend.get({
         tableName: 'servers',
         id

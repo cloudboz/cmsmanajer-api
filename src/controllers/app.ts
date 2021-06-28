@@ -27,6 +27,7 @@ class AppController implements Controller {
     this.router.get("/apps/:id", this.getApp);
     this.router.get("/apps/:id/databases", this.getDatabasesByApp);
     this.router.post("/apps", this.createApp);
+    this.router.post("/apps/:id", this.updateApp);
   }
 
   public getApps = async (req: Request, res: Response) => {
@@ -35,11 +36,29 @@ class AppController implements Controller {
         Authorization: req.headers.authorization
       })
 
-      const { data: { data } } = await this.backend.find({
+      const { data: { data: apps } } = await this.backend.find({
         tableName: 'apps',
         query: {
           userId: req.user.id
         }
+      })
+
+      const { data: { data: users } } = await this.backend.find({
+        tableName: 'systemusers',
+        query: {
+          limit: 100
+        }
+      })
+
+      const data = apps.map(app => {
+        const data = {
+          ...app,
+          systemUser: users.find(user => user.id == app.systemuserId)
+        }
+
+        delete data.systemuserId
+
+        return data
       })
 
       return res.status(200).json({ message: "success", data })
@@ -55,7 +74,7 @@ class AppController implements Controller {
         Authorization: req.headers.authorization
       })
 
-      const { data: { data } } = await this.backend.get({
+      const { data } = await this.backend.get({
         tableName: 'apps',
         id: req.params.id
       })
@@ -69,12 +88,18 @@ class AppController implements Controller {
 
   public createApp = async (req: Request, res: Response) => {
     const data: AppData = req.body
+    let body = {}
     data.user = req.user
     data.init = false
     
     try {
       this.backend.setHeader({
         Authorization: req.headers.authorization
+      })
+
+      const { data: server } = await this.backend.get({
+        tableName: "servers",
+        id: data.server.id
       })
 
       /*
@@ -105,32 +130,51 @@ class AppController implements Controller {
       }
 
       /*
-       * get mysql root password
-       * generate one if it hasn't installed
+       * check if web server or mysql haven't installed before install lamp or lemp
+       * then generate root password for mysql
        */
-      const { data: { data: root } } = await this.backend.find({
-        tableName: 'databases',
-        query: {
-          username: 'root',
-          serverId: data.server.id
-        }
-      })
-
-
-      if(root.length) data.server.dbRootPass = root[0].password
-      else {
-        const script = new ScriptService()
-        data.server.dbRootPass = script.generatePassword()
-        await this.backend.create({
-          tableName: 'databases',
-          body: {
-            name: 'root_' + script.randomString(3),
-            username: 'root',
-            password: data.server.dbRootPass,
-            serverId: data.server.id
+      if(data.type == "lamp" || data.type == "lemp"){
+        if(data.type == "lamp" && (!server.apache || !server.mysql)) {
+          data.init = true
+          body = {
+            apache: true
           }
-        })
-        data.init = true
+        }
+
+        else if(data.type == "lemp" && (!server.nginx || !server.mysql)) {
+          data.init = true
+          body = {
+            nginx: true
+          }
+        }
+
+        if(!server.mysql) {
+          const script = new ScriptService()
+          data.server.dbRootPass = script.generatePassword()
+          await this.backend.create({
+            tableName: 'databases',
+            body: {
+              name: 'root_' + script.randomString(3),
+              username: 'root',
+              password: data.server.dbRootPass,
+              serverId: data.server.id
+            }
+          })
+          body = {
+            ...body,
+            mysql: true
+          }
+        } else {
+          const { data: { data: root } } = await this.backend.find({
+            tableName: 'databases',
+            query: {
+              username: 'root',
+              serverId: data.server.id,
+            }
+          })
+
+          data.server.dbRootPass = root[0].password
+        }
       }
 
       /*
@@ -142,7 +186,8 @@ class AppController implements Controller {
         body: {
           ...data,
           serverId: data.server.id,
-          systemuserId: data.systemUser.id
+          systemuserId: data.systemUser.id,
+          userId: data.user.id
         }
       })
 
@@ -151,11 +196,38 @@ class AppController implements Controller {
       const app = new AppService(data)
       await app.create()
 
+      if(app.apps.includes(data.type)) {
+        body = {
+          [data.type]: true
+        }
+      }
+
+      await this.backend.patch({
+        tableName: 'servers',
+        id: data.server.id,
+        body
+      })
+
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed create project ", e);
       // await this.backend.remove({ tableName: 'project', id: data.id })
       return res.status(500).json({ message: "Failed to create project", e });
+    }
+  };
+
+  public updateApp = async (req: Request, res: Response) => {
+    try {
+      await this.backend.patch({
+        tableName: 'apps',
+        id: req.params.id,
+        body: req.body
+      })
+
+      return res.status(200).json({ message: "success" })
+    } catch (e) {
+      console.log("Failed update app ", e);
+      return res.status(500).json({ message: "Failed to update app" });
     }
   };
 
