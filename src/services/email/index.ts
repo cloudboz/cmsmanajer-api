@@ -1,4 +1,4 @@
-import { emailBody as body } from '../../helpers/template';
+import { emailBody as body } from '../../utils/template';
 import { BACKEND_ACCESS_TOKEN, EMAIL_SERVICE } from '../../../config/global.json'
 import crypto from 'crypto';
 import BackendService from '../backend';

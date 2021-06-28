@@ -27,6 +27,7 @@ class UserController implements Controller {
   }
 
   public initRoutes() {
+    this.router.get("/profile", this.getUserByToken)
     this.router.post("/register", this.register);
     this.router.post("/login", this.login);
     this.router.post("/verify", this.verifyEmail);
@@ -76,14 +77,14 @@ class UserController implements Controller {
       const auth = new AuthService(data)
       await auth.register()
 
-      return res.status(200).json({ message: "success", user })
+      return res.status(200).json({ message: "success", data: user })
     } catch (e) {
       console.log("Failed to register ", e);
       await this.backend.remove({
         tableName: "users",
         id: data.id
       })
-      return res.status(500).json({ message: e.response.data.message });
+      return res.status(500).json({ message: e });
     }
   };
 
@@ -116,7 +117,7 @@ class UserController implements Controller {
             ...data
           }
         })
-        return res.status(200).json({ message: "success", user })
+        return res.status(200).json({ message: "success", data: user })
       } catch (error) {
         return res.status(500).json({ message: "Invalid login." });
       }
@@ -128,6 +129,10 @@ class UserController implements Controller {
 
   public verifyEmail  = async (req: Request, res: Response) => {
     try {
+      this.backend.setHeader({
+        Authorization: 'Bearer ' + BACKEND_ACCESS_TOKEN,
+      })
+
       const { token } = req.body
 
       // get token
@@ -138,22 +143,22 @@ class UserController implements Controller {
         }
       })
       
-      if(data.length){
-        // update user
-        await this.backend.patch({
-          tableName: 'users',
-          id: data[0].userId,
-          body: {
-            verified: true
-          }
-        })
+      if(!data.length) return res.status(404).json({ message: "token is invalid" })
 
-        // remove token
-        await this.backend.remove({
-          tableName: 'email-verifications',
-          id: data[0].id
-        })
-      }
+      // update user
+      await this.backend.patch({
+        tableName: 'users',
+        id: data[0].userId,
+        body: {
+          verified: true
+        }
+      })
+
+      // remove token
+      await this.backend.remove({
+        tableName: 'email-verifications',
+        id: data[0].id
+      })
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
@@ -184,6 +189,24 @@ class UserController implements Controller {
       await sysUser.create()
 
       return res.status(200).json({ message: "success" })
+    } catch (e) {
+      console.log("Failed to login ", e);
+      return res.status(500).json({ message: e });
+    }
+  };
+
+  public getUserByToken = async (req: Request, res: Response) => {
+    try {
+      this.backend.setHeader({
+        Authorization: req.headers.authorization
+      })
+
+      const { data } = await this.backend.get({
+        tableName: "users",
+        id: req.user.id
+      })
+
+      return res.status(200).json({ message: "success", data })
     } catch (e) {
       console.log("Failed to login ", e);
       return res.status(500).json({ message: e });
