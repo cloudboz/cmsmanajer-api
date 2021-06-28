@@ -11,6 +11,7 @@ class AppService {
   data?: AppData
   baseDir = null
   script = new ScriptService()
+  apps = ["apache", "nginx", "mysql", "mongodb", "docker"]
   tags = {
     create: {
       lamp: {
@@ -76,8 +77,11 @@ class AppService {
         password
       }
 
-      let tags = this.tags.create[app.type][app.init ? "full" : "single"]
-      if(app.wordpress) tags = "wp-" + tags
+      let tag = null
+      if(this.apps.includes(app.type)) tag = app.type + "-install"
+      else tag = this.tags.create[app.type][app.init ? "full" : "single"]
+
+      if(app.wordpress) tag = "wp-" + tag
 
       // generate base script then run
       this.script.copy()
@@ -98,7 +102,9 @@ class AppService {
                       password: app.server.dbRootPass
                     }
                   })
-                 .run(tags)
+                  // .run(tag)
+
+                  console.log(tag);
                 
       return Promise.resolve("Success");
     } catch (e) {

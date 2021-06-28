@@ -10,7 +10,7 @@ interface User {
 
 const authentication = async (req: Request & User, res: Response, next: () => void )  => {
 
-    const nonSecurePaths = ['/', '/login', '/register'];
+    const nonSecurePaths = ['/', '/login', '/register', '/verify'];
     const path = req.path.replace('/v1', '')
     if (nonSecurePaths.includes(path)) return next();
 
