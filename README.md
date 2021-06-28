@@ -43,34 +43,32 @@ Application will run on port **5000**
 
 ### Wordpress (Apache)
 - [x] wp-lamp-full-install
-- [ ] wp-lamp-full-uninstall
 - [x] wp-lamp-create-single-app
 
 ### Wordpress (Nginx)
 - [x] wp-lemp-full-install
-- [ ] wp-lemp-full-uninstall
 - [x] wp-lemp-create-single-app
 
 ### MySQL
-- [ ] mysql-install
+- [x] mysql-install
 - [x] mysql-uninstall
 - [x] mysql-create-single-db
 - [x] mysql-delete-single-db
 
 ### MongoDB
-- [ ] mongodb-install
+- [x] mongodb-install
 - [ ] mongodb-uninstall
 
 ### Nginx
-- [ ] nginx-install
+- [x] nginx-install
 - [ ] nginx-uninstall
 
 ### Apache
-- [ ] apache-install
+- [x] apache-install
 - [ ] apache-uninstall
 
 ### Docker
-- [ ] docker-install
+- [x] docker-install
 - [ ] docker-uninstall
 
 For more information see [API Documentation](https://documenter.getpostman.com/view/12745325/TzY4euFZ).
