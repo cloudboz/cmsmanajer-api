@@ -40,6 +40,7 @@ class UserController implements Controller {
     const schema = Joi.object({
       email: Joi.string().email().required(),
       password: Joi.string().min(8).required(),
+      phone: Joi.string().min(6),
       name: Joi.string().min(3).required(),
       country: Joi.string().min(3),
       province: Joi.string().min(3),
