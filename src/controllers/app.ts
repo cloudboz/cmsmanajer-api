@@ -15,7 +15,9 @@ class AppController implements Controller {
   public path = "/";
   public router = express.Router();
   private backend = new BackendService({
-    header: {}
+    header: {
+      Authorization: "Bearer " + BACKEND_ACCESS_TOKEN,
+    },
   });
 
   constructor() {
@@ -32,10 +34,6 @@ class AppController implements Controller {
 
   public getApps = async (req: Request, res: Response) => {
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
       const { data: { data: apps } } = await this.backend.find({
         tableName: 'apps',
         query: {
@@ -70,10 +68,6 @@ class AppController implements Controller {
 
   public getApp = async (req: Request, res: Response) => {
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
       const { data } = await this.backend.get({
         tableName: 'apps',
         id: req.params.id
@@ -93,10 +87,6 @@ class AppController implements Controller {
     data.init = false
     
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
       const { data: server } = await this.backend.get({
         tableName: "servers",
         id: data.server.id
@@ -111,7 +101,8 @@ class AppController implements Controller {
           tableName: 'systemusers',
           body: {
             username: data.systemUser.username,
-            serverId: data.server.id
+            serverId: data.server.id,
+            userId: data.user.id
           }
         })
 
@@ -236,10 +227,6 @@ class AppController implements Controller {
   public getDatabasesByApp = async (req: Request, res: Response) => {
     const { id } = req.params
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
       const { data: { data } } = await this.backend.find({
         tableName: 'databases',
         query: {

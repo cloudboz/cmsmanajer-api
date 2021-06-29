@@ -32,10 +32,6 @@ class DatabaseController implements Controller {
 
   public getDatabases = async (req: Request, res: Response) => {
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
       const { data } = await this.backend.find({
         tableName: 'databases',
         query: {
@@ -58,11 +54,6 @@ class DatabaseController implements Controller {
     data.user = req.user
     
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
-      
       // get mysql root password
       const { data: { data: dbs } } = await this.backend.find({
         tableName: 'databases',
@@ -99,10 +90,6 @@ class DatabaseController implements Controller {
     const { id } = req.params
 
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
       const { data: db } = await this.backend.get({
         tableName: 'databases',
         id: id

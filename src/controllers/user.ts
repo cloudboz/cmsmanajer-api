@@ -130,10 +130,6 @@ class UserController implements Controller {
 
   public verifyEmail  = async (req: Request, res: Response) => {
     try {
-      this.backend.setHeader({
-        Authorization: 'Bearer ' + BACKEND_ACCESS_TOKEN,
-      })
-
       const { token } = req.body
 
       // get token
@@ -172,10 +168,6 @@ class UserController implements Controller {
     const data = req.body
 
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
       await this.backend.create({
         tableName: "systemusers",
         body: {
@@ -198,10 +190,6 @@ class UserController implements Controller {
 
   public getUserByToken = async (req: Request, res: Response) => {
     try {
-      this.backend.setHeader({
-        Authorization: req.headers.authorization
-      })
-
       const { data } = await this.backend.get({
         tableName: "users",
         id: req.user.id
