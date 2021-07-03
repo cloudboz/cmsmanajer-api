@@ -23,6 +23,13 @@ export interface UserData {
 
 export interface RegisterData extends UserData {
   name: string
+  phone: string
+}
+
+export interface SSHKey extends Data {
+  id?: string
+  name: string
+  key: string
 }
 
 // server
@@ -31,7 +38,7 @@ export interface ServerData extends Data {
   name?: string
   ip: string
   stack?: string
-  sshKey?: string
+  sshKey?: SSHKey
   systemUser?: SystemUserData
   dbRootPass?: string
 }
@@ -88,7 +95,7 @@ export interface SystemUserData extends Data {
   id?: string
   username?: string
   password?: string
-  sshKey?: string
+  sshKeyId?: string
   server?: ServerData
 }
 
@@ -110,6 +117,7 @@ export interface IRegister {
   id?: string
   email: string
   password: string
+  phone: string
   name: string
   country?: string
   province?: string

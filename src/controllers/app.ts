@@ -34,29 +34,11 @@ class AppController implements Controller {
 
   public getApps = async (req: Request, res: Response) => {
     try {
-      const { data: { data: apps } } = await this.backend.find({
+      const { data: { data } } = await this.backend.find({
         tableName: 'apps',
         query: {
           userId: req.user.id
         }
-      })
-
-      const { data: { data: users } } = await this.backend.find({
-        tableName: 'systemusers',
-        query: {
-          limit: 100
-        }
-      })
-
-      const data = apps.map(app => {
-        const data = {
-          ...app,
-          systemUser: users.find(user => user.id == app.systemuserId)
-        }
-
-        delete data.systemuserId
-
-        return data
       })
 
       return res.status(200).json({ message: "success", data })
@@ -87,6 +69,16 @@ class AppController implements Controller {
     data.init = false
     
     try {
+
+      const { data: { total: exist } } = await this.backend.find({
+        tableName: 'apps',
+        query: {
+          name: data.name
+        }
+      })
+
+      if(exist) return res.status(403).json({ message: "app name must be unique" })
+
       const { data: server } = await this.backend.get({
         tableName: "servers",
         id: data.server.id
