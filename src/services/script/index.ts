@@ -19,15 +19,15 @@ class ScriptService {
    * setConfig
    */
   public setConfig({ data }) {
-    this.baseDir = path.resolve(__dirname, '../../../../core')
-    this.userDir = path.resolve(__dirname, '../../../../scripts/core' + data.user.id)
+    this.baseDir = path.resolve(__dirname, '../../../../cmsmanajer-core')
+    this.userDir = path.resolve(__dirname, '../../../../scripts/' + data.user.id)
   }
 
   /**
    * It will copy base script folder without .git
    */
   public copy = () => {
-    fs.copySync(this.baseDir, this.userDir, { filter: (src) => !src.includes(".git")})
+    fs.copySync(this.baseDir, this.userDir, { filter: (src) => (!src.includes(".git") || !src.includes("files"))})
     return this
   }
 
@@ -78,6 +78,8 @@ class ScriptService {
   public run = (tag: string) => cp.execSync(`ansible-playbook cman.yml --tags "${tag}"`, {
     cwd: this.userDir
   })
+
+  public createFile = (name, content) => fs.writeFileSync(this.userDir + '/files/' + name + '.pem', content)
 
   private hashPassword = (password: string) => (cp.execSync(`mkpasswd -m sha-512 "${password}"`)).toString('hex')
 

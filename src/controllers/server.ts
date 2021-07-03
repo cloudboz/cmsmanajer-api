@@ -6,7 +6,7 @@ import { Response } from 'express'
 
 
 // services
-import { BackendService, ServerService, DatabaseService } from '../services'
+import { BackendService, ServerService, DatabaseService, SystemUserService } from '../services'
 
 // config
 import { BACKEND_ACCESS_TOKEN } from "../../config/global.json";
@@ -147,6 +147,21 @@ class ServerController implements Controller {
       })
 
       data.id = createdServer.id
+
+      //TODO: support ssh key
+      // const { data: sshKey } = await this.backend.create({
+      //   tableName: 'ssh-keys',
+      //   body: {
+      //     name: data.name,
+      //     userId: data.user.id       
+      //   }
+      // })
+
+      // const user = new SystemUserService()
+      // user.sshKey({
+      //   ...data.sshKey,
+      //   user: data.user
+      // })
 
       const { data: createdUser } = await this.backend.create({
         tableName: 'systemusers',

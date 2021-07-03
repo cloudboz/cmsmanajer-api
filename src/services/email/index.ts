@@ -1,4 +1,4 @@
-import { emailBody as body } from '../../utils/template';
+import { verification, forget } from '../../utils/template';
 import { BACKEND_ACCESS_TOKEN, EMAIL_SERVICE } from '../../../config/global.json'
 import crypto from 'crypto';
 import BackendService from '../backend';
@@ -17,8 +17,8 @@ class EmailService {
   constructor(user) {
     if (user) {
       this.setData(user);
-      this.setProvider(EMAIL_SERVICE)
     }
+    this.setProvider(EMAIL_SERVICE)
   }
 
   public setData = (user) => {
@@ -55,7 +55,41 @@ class EmailService {
       const response = await this.provider.sendMail({
         to: user.email,
         subject: "Verify your email",
-        html: body(token)
+        html: verification(token)
+      });
+
+      console.log("Email sent: " + response)
+
+      return Promise.resolve(response);
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  }
+
+  /**
+   * sendForgetPassword
+   */
+  public sendForgetPassword = async () => {
+    const user = this.data;
+
+    try {
+      const token = this.generateToken()
+
+      await this.backend.create({
+        tableName: "forgot-passwords",
+        body: {
+          token,
+          email: user.email,
+          userId: user.id
+        }
+      })
+
+      console.log("Sending email...")
+
+      const response = await this.provider.sendMail({
+        to: user.email,
+        subject: "Verify your email",
+        html: forget(token)
       });
 
       console.log("Email sent: " + response)

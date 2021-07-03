@@ -10,8 +10,8 @@ interface User {
 
 const authentication = async (req: Request & User, res: Response, next: () => void )  => {
 
-    const nonSecurePaths = ['/', '/login', '/register', '/verify'];
-    const path = req.path.replace('/v1', '')
+    const nonSecurePaths = ['', 'login', 'register', 'verify', 'forgot-password'];
+    const path = req.path.split('/')[2]
     if (nonSecurePaths.includes(path)) return next();
 
     const token: string = req.headers["authorization"]?.replace('Bearer ', '')

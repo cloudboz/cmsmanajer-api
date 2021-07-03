@@ -1,4 +1,4 @@
-import { SystemUserData, ServerConfig } from "../../types";
+import { SystemUserData, ServerConfig, SSHKey } from "../../types";
 
 // npm modules
 import fs from 'fs-extra';
@@ -67,6 +67,22 @@ class SystemUserService {
     }
     
   }
+
+  //TODO: support ssh key
+  // public sshKey = async (data: SSHKey): Promise<string> => {
+  //   try {
+  //     const sshKey = data;
+  //     this.baseDir = this.getBaseDirectory(sshKey.user.id)
+
+  //     const { name, key } = sshKey
+      
+  //     this.script.createFile(name, key)
+
+  //     return Promise.resolve("Success");
+  //   } catch (e) {
+  //     return Promise.reject(e?.message);
+  //   }
+  // }
 }
 
 export default SystemUserService;

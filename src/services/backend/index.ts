@@ -31,8 +31,18 @@ class BackendService {
       const fieldQuery: string[] = [];
 
       for (const [key, value] of Object.entries(query)) {
-        if (["limit", "orderBy", "select", "skip"].includes(key)) {
-          nonFieldQuery.push(`$${key}=${value}`);
+        if (["limit", "orderBy", "select", "skip", "or", "sort"].includes(key)) {
+          if (key == "or") {
+            value.map((v, i) => {
+              for (const [key, value] of Object.entries(v)) {
+                nonFieldQuery.push(`$or[${i}][${key}]=${value}`);
+              }
+            });
+          } else if (key == "sort"){
+            for (const [key, val] of Object.entries(value)) {
+              nonFieldQuery.push(`$sort[${key}]=${val}`);
+            }
+          } else nonFieldQuery.push(`$${key}=${value}`);
         } else {
           fieldQuery.push(`${key}=${value}`);
         }

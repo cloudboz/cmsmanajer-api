@@ -8,6 +8,7 @@ import EmailService from '../email';
 class AuthService {
   data?: RegisterData = null
   baseDir? = null
+  email = new EmailService(null)
 
   constructor(user) {
     if (user) {
@@ -23,7 +24,9 @@ class AuthService {
   }
 
   private applyConfig = (user: RegisterData) => {
-    if (user) {}
+    if (user) {
+      this.email.setData(user)
+    }
   }
 
   private createBaseDirectory = (user?: RegisterData): void => {
@@ -52,18 +55,32 @@ databs/`
     this.createBaseDirectory(user);
     // this.createConfigFile()
     try {
-      const email = new EmailService(user)
-      await email.sendVerificationEmail()
+      await this.email.sendVerificationEmail()
       return Promise.resolve("success")
     } catch (e) {
       console.log(e)
       return Promise.reject(e)
     }
-
   }
 
-  public verifyEmail = async () => {
+  public resend = async (data?: RegisterData) => {
+    try {
+      await this.email.sendVerificationEmail()
+      return Promise.resolve("success")
+    } catch (e) {
+      console.log(e)
+      return Promise.reject(e)
+    }
+  }
 
+  public forgetPassword = async (data?: RegisterData) => {
+    try {
+      await this.email.sendForgetPassword()
+      return Promise.resolve("success")
+    } catch (e) {
+      console.log(e)
+      return Promise.reject(e)
+    }
   }
 }
 
