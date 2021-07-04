@@ -5,10 +5,10 @@
   "SECRET_KEY": "sMFu/yyRgZSoKTJrNV2mv26FeOY=",
   "SENDGRID_API_KEY": "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",
   "EMAIL_SERVICE": "sendgrid",
-  "EMAIL_ADDRESS": "hello@cmsmanajer.com",
+  "EMAIL_ADDRESS": "noreply@cmsmanajer.com",
   "EMAIL_PASSWORD": "",
-  "CONTACT_EMAIL_ADDRESS": "askiah@memoora.com",
-  "CONTACT_EMAIL_PASSWORD": "Nur4skiah",
+  "CONTACT_EMAIL_ADDRESS": "hello@memoora.com",
+  "CONTACT_EMAIL_PASSWORD": "",
   "SMTP_HOST": "smtp.zoho.com",
   "SMTP_PORT": 587
 }

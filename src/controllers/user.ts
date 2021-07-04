@@ -343,7 +343,6 @@ class UserController implements Controller {
     try {
 
       const email = new EmailService()
-      email.setProvider("smtp")
       const resp = await email.sendContact(req.body)
 
       const response = JSON.parse(JSON.stringify(resp));
