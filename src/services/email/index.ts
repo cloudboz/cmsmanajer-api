@@ -106,9 +106,8 @@ class EmailService {
 
       console.log("Sending email...")
 
-      const response = await this.provider.sendContactMail({
+      const response = await this.provider.sendMail({
         sender: name,
-        from: CONTACT_EMAIL_ADDRESS,
         to: CONTACT_EMAIL_ADDRESS,
         subject: `Message from ${email}: ${subject}`,
         html: `<b>Sender: ${name} (${email})</b>
