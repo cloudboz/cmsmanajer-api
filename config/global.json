@@ -7,6 +7,8 @@
   "EMAIL_SERVICE": "sendgrid",
   "EMAIL_ADDRESS": "hello@cmsmanajer.com",
   "EMAIL_PASSWORD": "",
+  "CONTACT_EMAIL_ADDRESS": "askiah@memoora.com",
+  "CONTACT_EMAIL_PASSWORD": "Nur4skiah",
   "SMTP_HOST": "smtp.zoho.com",
   "SMTP_PORT": 587
 }

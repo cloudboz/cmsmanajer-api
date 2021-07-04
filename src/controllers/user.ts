@@ -12,6 +12,7 @@ import { BackendService, AuthService, SystemUserService } from '../services'
 
 // config
 import { BACKEND_ACCESS_TOKEN } from "../../config/global.json";
+import EmailService from '../services/email';
 
 class UserController implements Controller {
   public path = "/";
@@ -36,6 +37,7 @@ class UserController implements Controller {
     this.router.post("/forgot-password/verify", this.verifyForgetPasswordToken);
     this.router.post("/forgot-password/resend", this.resendForgetPasswordEmail);
     this.router.post("/forgot-password/reset", this.resetPassword);
+    this.router.post("/contact", this.contactUs);
     this.router.post("/users", this.createSysUser)
   }
 
@@ -113,7 +115,7 @@ class UserController implements Controller {
       const { data: { total: exist } } = await this.backend.find({
         tableName: "users",
         query: {
-          email: data.email
+          email: querystring.escape(data.email)
         }
       })
 
@@ -188,7 +190,7 @@ class UserController implements Controller {
       const { data } = await this.backend.find({
         tableName: 'email-verifications',
         query: {
-          email: user.email,
+          email: querystring.escape(user.email),
           sort: {
             createdAt: "-1"
           }
@@ -207,7 +209,7 @@ class UserController implements Controller {
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed to verify email ", e);
+      console.log("Failed to resend email ", e);
       return res.status(500).json({ message: e });
     }
   }
@@ -245,7 +247,7 @@ class UserController implements Controller {
       const { data: users } = await this.backend.find({
         tableName: "users",
         query: {
-          email
+          email: querystring.escape(email)
         }
       })
 
@@ -256,7 +258,7 @@ class UserController implements Controller {
       const { data } = await this.backend.find({
         tableName: 'forgot-passwords',
         query: {
-          email: email,
+          email: querystring.escape(email),
           sort: {
             createdAt: "-1"
           }
@@ -275,7 +277,7 @@ class UserController implements Controller {
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed to verify email ", e);
+      console.log("Failed to resend reset password instruction ", e);
       return res.status(500).json({ message: e });
     }
   }
@@ -296,7 +298,7 @@ class UserController implements Controller {
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed to verify email ", e);
+      console.log("Failed to verify token ", e);
       return res.status(500).json({ message: e });
     }
   }
@@ -332,10 +334,27 @@ class UserController implements Controller {
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed to verify email ", e);
+      console.log("Failed to reset password ", e);
       return res.status(500).json({ message: e });
     }
   }
+
+  public contactUs = async (req: Request, res: Response) => {
+    try {
+
+      const email = new EmailService()
+      email.setProvider("smtp")
+      const resp = await email.sendContact(req.body)
+
+      const response = JSON.parse(JSON.stringify(resp));
+      if(response.responseCode == 553) return res.status(553).json({ message: "failed to send email" })
+  
+      return res.status(200).json({ message: "success" })
+    } catch (e) {
+      console.log("Failed to send message ", e);
+      return res.status(500).json({ message: e });
+    }
+  };
 
   public createSysUser = async (req: Request, res: Response) => {
     const data = req.body
@@ -356,7 +375,7 @@ class UserController implements Controller {
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed to login ", e);
+      console.log("Failed to create user ", e);
       return res.status(500).json({ message: e });
     }
   };
@@ -370,7 +389,7 @@ class UserController implements Controller {
 
       return res.status(200).json({ message: "success", data })
     } catch (e) {
-      console.log("Failed to login ", e);
+      console.log("Failed to get user ", e);
       return res.status(500).json({ message: e });
     }
   };

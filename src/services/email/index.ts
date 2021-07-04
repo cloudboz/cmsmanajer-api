@@ -1,10 +1,11 @@
 import { verification, forget } from '../../utils/template';
-import { BACKEND_ACCESS_TOKEN, EMAIL_SERVICE } from '../../../config/global.json'
+import { BACKEND_ACCESS_TOKEN, EMAIL_SERVICE, EMAIL_ADDRESS, CONTACT_EMAIL_ADDRESS } from '../../../config/global.json'
 import crypto from 'crypto';
 import BackendService from '../backend';
 import Sendgrid from './sendgrid';
 import SMTP from './smtp';
 
+type Provider = "sendgrid" | "smtp"
 class EmailService {
   private data = null
   private backend = new BackendService({
@@ -14,11 +15,11 @@ class EmailService {
   });
   private provider = null
 
-  constructor(user) {
+  constructor(user?) {
     if (user) {
       this.setData(user);
     }
-    this.setProvider(EMAIL_SERVICE)
+    this.setProvider(<Provider>EMAIL_SERVICE)
   }
 
   public setData = (user) => {
@@ -27,7 +28,7 @@ class EmailService {
     }
   }
 
-  public setProvider = (provider) => {
+  public setProvider = (provider: Provider) => {
     if(provider == "sendgrid") this.provider = new Sendgrid()
     else if(provider == "smtp") this.provider = new SMTP()
   }
@@ -90,6 +91,30 @@ class EmailService {
         to: user.email,
         subject: "Verify your email",
         html: forget(token)
+      });
+
+      console.log("Email sent: " + response)
+
+      return Promise.resolve(response);
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  }
+
+  public sendContact = async ({ name, email, subject, body }) => {
+    try {
+
+      console.log("Sending email...")
+
+      const response = await this.provider.sendContactMail({
+        sender: name,
+        from: CONTACT_EMAIL_ADDRESS,
+        to: CONTACT_EMAIL_ADDRESS,
+        subject: `Message from ${email}: ${subject}`,
+        html: `<b>Sender: ${name} (${email})</b>
+        <br/>
+        ${body}
+        `,
       });
 
       console.log("Email sent: " + response)
