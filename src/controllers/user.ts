@@ -209,7 +209,7 @@ class UserController implements Controller {
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed to verify email ", e);
+      console.log("Failed to resend email ", e);
       return res.status(500).json({ message: e });
     }
   }
@@ -277,7 +277,7 @@ class UserController implements Controller {
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed to verify email ", e);
+      console.log("Failed to resend reset password instruction ", e);
       return res.status(500).json({ message: e });
     }
   }
@@ -298,7 +298,7 @@ class UserController implements Controller {
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed to verify email ", e);
+      console.log("Failed to verify token ", e);
       return res.status(500).json({ message: e });
     }
   }
@@ -334,7 +334,7 @@ class UserController implements Controller {
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed to verify email ", e);
+      console.log("Failed to reset password ", e);
       return res.status(500).json({ message: e });
     }
   }
@@ -351,7 +351,7 @@ class UserController implements Controller {
   
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed to login ", e);
+      console.log("Failed to send message ", e);
       return res.status(500).json({ message: e });
     }
   };
@@ -375,7 +375,7 @@ class UserController implements Controller {
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed to login ", e);
+      console.log("Failed to create user ", e);
       return res.status(500).json({ message: e });
     }
   };
@@ -389,7 +389,7 @@ class UserController implements Controller {
 
       return res.status(200).json({ message: "success", data })
     } catch (e) {
-      console.log("Failed to login ", e);
+      console.log("Failed to get user ", e);
       return res.status(500).json({ message: e });
     }
   };
