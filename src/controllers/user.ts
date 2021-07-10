@@ -347,6 +347,7 @@ class UserController implements Controller {
 
       const response = JSON.parse(JSON.stringify(resp));
       if(response.responseCode == 553) return res.status(553).json({ message: "failed to send email" })
+      if(response.responseCode == 535) return res.status(535).json({ message: "failed to send email" })
   
       return res.status(200).json({ message: "success" })
     } catch (e) {
@@ -357,13 +358,15 @@ class UserController implements Controller {
 
   public createSysUser = async (req: Request, res: Response) => {
     const data = req.body
+    data.user = req.user
 
     try {
       await this.backend.create({
         tableName: "systemusers",
         body: {
           username: data.username,
-          serverId: data.server.id
+          serverId: data.server.id,
+          userId: data.user.id
         }
       })
 

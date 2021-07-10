@@ -1,4 +1,6 @@
 import * as express from 'express'
+import { paramCase } from 'param-case'
+import makeKey from '../utils/makeKey'
 
 // types
 import { Request, Controller, ServerData } from '../types'
@@ -27,6 +29,7 @@ class ServerController implements Controller {
   public initRoutes() {
     this.router.get("/servers", this.getServers);
     this.router.get("/servers/:id", this.getServer);
+    this.router.patch("/servers/:id", this.editServer);
     this.router.get("/servers/:id/apps", this.getAppsByServer);
     this.router.get("/servers/:id/users", this.getUsersByServer);
     // this.router.get("/servers/:id/status", this.getServerStatus);
@@ -149,25 +152,37 @@ class ServerController implements Controller {
       data.id = createdServer.id
 
       //TODO: support ssh key
-      // const { data: sshKey } = await this.backend.create({
-      //   tableName: 'ssh-keys',
-      //   body: {
-      //     name: data.name,
-      //     userId: data.user.id       
-      //   }
-      // })
 
-      // const user = new SystemUserService()
-      // user.sshKey({
-      //   ...data.sshKey,
-      //   user: data.user
-      // })
+      if(data.systemUser.sshKey) {
+        const name = paramCase(data.name).replace(" ", "") + makeKey(5)
+        console.log(name);
+        const { data: sshKey } = await this.backend.create({
+          tableName: 'ssh-keys',
+          body: {
+            name,
+            serverId: data.id,
+            userId: data.user.id       
+          }
+        })
+
+        data.systemUser.sshKeyId = sshKey.id
+        data.sshKey.name = name
+
+        const user = new SystemUserService({ ...data.systemUser, user: data.user })
+        user.sshKey({
+          name,
+          key: data.systemUser.sshKey,
+          user: data.user
+        })
+      }
 
       const { data: createdUser } = await this.backend.create({
         tableName: 'systemusers',
         body: {
           username: data.systemUser.username,
-          serverId: data.id
+          serverId: data.id,
+          userId: data.user.id,
+          ...(data.systemUser.sshKeyId ? { sshKeyId: data.systemUser.sshKeyId } : {})
         }
       })
 
@@ -181,28 +196,72 @@ class ServerController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed connect server ", e);
-      return res.status(500).json({ message: "Failed to connect server" });
-    }
-  };
-
-  public deleteServer = async (req: Request, res: Response) => {
-    const data = req.params
-
-    try {
-      const { data: serverData } = await this.backend.get({
-        tableName: 'servers',
-        id: data.id
-      })
-
-      const server = new ServerService(serverData)
-      await server.delete()
-
       await this.backend.remove({
         tableName: 'servers',
         id: data.id
       })
+      await this.backend.remove({
+        tableName: 'systemusers',
+        id: data.systemUser.id
+      })
+      return res.status(500).json({ message: "Failed to connect server" });
+    }
+  };
 
-      return res.status(200).json({ message: "success", data })
+  public editServer = async (req: Request, res: Response) => {
+    const data = req.body
+    const { id } = req.params
+    
+    try {
+      await this.backend.patch({
+        tableName: 'servers',
+        id,
+        body: {
+          ...data,
+        }
+      })
+
+      return res.status(200).json({ message: "success" })
+    } catch (e) {
+      console.log("Failed to edit server ", e);
+      return res.status(500).json({ message: "Failed to edit server" });
+    }
+  };
+
+  public deleteServer = async (req: Request, res: Response) => {
+    const { id } = req.params
+
+    try {
+      const { data: serverData } = await this.backend.get({
+        tableName: 'servers',
+        id
+      })
+
+      const { data: { data: apps } } = await this.backend.find({
+        tableName: 'apps',
+        query: {
+          serverId: serverData.id
+        }
+      })
+
+      serverData.user = req.user
+
+      const server = new ServerService(serverData)
+      await server.delete()
+
+      await Promise.all(apps.map(app => {
+        this.backend.remove({
+          tableName: 'apps',
+          id: app.id
+        })
+      }));
+
+      await this.backend.remove({
+        tableName: 'servers',
+        id
+      })
+
+      return res.status(200).json({ message: "success", data: serverData })
     } catch (e) {
       console.log("Failed delete server ", e);
       return res.status(500).json({ message: "Failed to delete server" });

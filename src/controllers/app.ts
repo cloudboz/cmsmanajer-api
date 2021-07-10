@@ -29,7 +29,7 @@ class AppController implements Controller {
     this.router.get("/apps/:id", this.getApp);
     this.router.get("/apps/:id/databases", this.getDatabasesByApp);
     this.router.post("/apps", this.createApp);
-    this.router.post("/apps/:id", this.updateApp);
+    this.router.patch("/apps/:id", this.updateApp);
   }
 
   public getApps = async (req: Request, res: Response) => {
