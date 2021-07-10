@@ -166,7 +166,7 @@ class ServerController implements Controller {
         })
 
         data.systemUser.sshKeyId = sshKey.id
-        data.sshKey.name = name
+        data.systemUser.sshKey = name
 
         const user = new SystemUserService({ ...data.systemUser, user: data.user })
         user.sshKey({

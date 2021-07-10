@@ -52,7 +52,7 @@ class ServerService {
       const sysUser = {
         username: server.systemUser.username,
         password: server.systemUser.password,
-        sshKey: server.sshKey?.name
+        sshKey: server.systemUser.sshKey
       }
 
       // generate base script then run
