@@ -69,20 +69,21 @@ class SystemUserService {
   }
 
   //TODO: support ssh key
-  // public sshKey = async (data: SSHKey): Promise<string> => {
-  //   try {
-  //     const sshKey = data;
-  //     this.baseDir = this.getBaseDirectory(sshKey.user.id)
+  public sshKey = async (data: SSHKey): Promise<string> => {
+    try {
+      const sshKey = data;
+      this.baseDir = this.getBaseDirectory(sshKey.user.id)
 
-  //     const { name, key } = sshKey
+      const { name, key } = sshKey
       
-  //     this.script.createFile(name, key)
+      this.script.setConfig({ data: sshKey })
+      await this.script.createFile(name, key)
 
-  //     return Promise.resolve("Success");
-  //   } catch (e) {
-  //     return Promise.reject(e?.message);
-  //   }
-  // }
+      return Promise.resolve("Success");
+    } catch (e) {
+      return Promise.reject(e?.message);
+    }
+  }
 }
 
 export default SystemUserService;

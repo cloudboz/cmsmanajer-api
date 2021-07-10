@@ -79,7 +79,7 @@ class ScriptService {
     cwd: this.userDir
   })
 
-  public createFile = (name, content) => fs.writeFileSync(this.userDir + '/files/' + name + '.pem', content)
+  public createFile = (name: string, content: string) => fs.writeFileSync(this.baseDir + '/files/' + name + '.pem', content)
 
   private hashPassword = (password: string) => (cp.execSync(`mkpasswd -m sha-512 "${password}"`)).toString('hex')
 

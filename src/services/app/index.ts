@@ -69,12 +69,13 @@ class AppService {
       const app = data || this.data;
       this.baseDir = this.getBaseDirectory(app.user.id)
 
-      const { username, password } = app.systemUser
+      const { username, password, sshKey } = app.systemUser
       const { title, username: wpUser, password: wpPass, email } = app.wordpress || {}
       
       const sysUser = {
         username,
-        password
+        password,
+        sshKey
       }
 
       let tag = null

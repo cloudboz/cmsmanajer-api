@@ -1,4 +1,5 @@
 import * as express from 'express'
+import { paramCase } from "param-case";
 
 // types
 import { Request, Controller, DatabaseData } from '../types'
@@ -26,6 +27,7 @@ class DatabaseController implements Controller {
 
   public initRoutes() {
     this.router.get("/databases", this.getDatabases);
+    this.router.get("/databases/:id", this.getDatabase);
     this.router.post("/databases", this.createDatabase);
     this.router.delete("/databases/:id", this.deleteDatabase);
   }
@@ -46,11 +48,26 @@ class DatabaseController implements Controller {
     }
   };
 
+  public getDatabase = async (req: Request, res: Response) => {
+    try {
+      const { data } = await this.backend.get({
+        tableName: 'databases',
+        id: req.params.id
+      })
+
+      return res.status(200).json({ message: "success", data })
+    } catch (e) {
+      console.log("Failed get databases ", e);
+      return res.status(500).json({ message: "Failed to get databases" });
+    }
+  };
+
   /**
    * create database with username and password from user
    */
   public createDatabase = async (req: Request, res: Response) => {
     const data: DatabaseData = req.body
+    data.name = paramCase(req.body.name)
     data.user = req.user
     
     try {
@@ -70,7 +87,8 @@ class DatabaseController implements Controller {
         tableName: 'databases',
         body: {
           ...data,
-          rootPassword: data.server.dbRootPass
+          serverId: data.server.id,
+          userId: data.user.id
         }
       })
 

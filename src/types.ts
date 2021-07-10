@@ -96,6 +96,7 @@ export interface SystemUserData extends Data {
   username?: string
   password?: string
   sshKeyId?: string
+  sshKey?: string
   server?: ServerData
 }
 
