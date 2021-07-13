@@ -40,15 +40,19 @@ class ServerController implements Controller {
   }
 
   public getServers = async (req: Request, res: Response) => {
+    const { q } = req.query
+
     try {
-      const { data: { data } } = await this.backend.find({
+      const { data: { data, total } } = await this.backend.find({
         tableName: 'servers',
         query: {
-          userId: req.user.id
+          userId: req.user.id,
+          limit: 100,
+          ...(q && { name: q })
         }
       })
 
-      return res.status(200).json({ message: "success", data })
+      return res.status(200).json({ message: "success", total, data })
     } catch (e) {
       console.log("Failed get servers ", e);
       return res.status(500).json({ message: "Failed to get servers" });
@@ -138,6 +142,7 @@ class ServerController implements Controller {
 
   public connectServer = async (req: Request, res: Response) => {
     const data: ServerData = req.body
+    const io = req.io
     data.user = req.user
     
     try {
@@ -154,8 +159,7 @@ class ServerController implements Controller {
       //TODO: support ssh key
 
       if(data.systemUser.sshKey) {
-        const name = paramCase(data.name).replace(" ", "") + makeKey(5)
-        console.log(name);
+        const name = paramCase(data.name).replace("-", "") + makeKey(5)
         const { data: sshKey } = await this.backend.create({
           tableName: 'ssh-keys',
           body: {
@@ -166,7 +170,6 @@ class ServerController implements Controller {
         })
 
         data.systemUser.sshKeyId = sshKey.id
-        data.systemUser.sshKey = name
 
         const user = new SystemUserService({ ...data.systemUser, user: data.user })
         user.sshKey({
@@ -174,6 +177,8 @@ class ServerController implements Controller {
           key: data.systemUser.sshKey,
           user: data.user
         })
+
+        data.systemUser.sshKey = name
       }
 
       const { data: createdUser } = await this.backend.create({
@@ -190,8 +195,8 @@ class ServerController implements Controller {
 
       //TODO: handle multiple server
 
-      const server = new ServerService(data)
-      await server.connect()
+      const server = new ServerService(data, io)
+      server.connect()
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
@@ -244,18 +249,34 @@ class ServerController implements Controller {
         }
       })
 
+      const { data: { data: users } } = await this.backend.find({
+        tableName: 'systemusers',
+        query: {
+          serverId: serverData.id
+        }
+      })
+
       serverData.user = req.user
 
       const server = new ServerService(serverData)
       await server.delete()
 
-      await Promise.all(apps.map(app => {
+      //TODO: delete apps
+      
+      apps.map(app => {
         this.backend.remove({
           tableName: 'apps',
           id: app.id
         })
-      }));
-
+      })
+      
+      users.map(user => {
+        this.backend.remove({
+          tableName: 'systemusers',
+          id: user.id
+        })
+      })
+      
       await this.backend.remove({
         tableName: 'servers',
         id

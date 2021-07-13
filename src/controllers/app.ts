@@ -10,6 +10,8 @@ import { BackendService, AppService, SystemUserService, ScriptService } from '..
 
 // config
 import { BACKEND_ACCESS_TOKEN } from "../../config/global.json";
+import { paramCase } from 'param-case';
+import makeKey from '../utils/makeKey';
 
 class AppController implements Controller {
   public path = "/";
@@ -30,6 +32,7 @@ class AppController implements Controller {
     this.router.get("/apps/:id/databases", this.getDatabasesByApp);
     this.router.post("/apps", this.createApp);
     this.router.patch("/apps/:id", this.updateApp);
+    this.router.delete("/apps/:id", this.deleteApp);
   }
 
   public getApps = async (req: Request, res: Response) => {
@@ -54,6 +57,8 @@ class AppController implements Controller {
         tableName: 'apps',
         id: req.params.id
       })
+
+      if(data.userId != req.user.id) return res.status(401).json({ message: "not allowed" })
 
       return res.status(200).json({ message: "success", data })
     } catch (e) {
@@ -88,27 +93,48 @@ class AppController implements Controller {
        * create new system user
        * if user wants to create and use new system user
        */
+      //TODO: support ssh key
+
+
+      const systemUser = new SystemUserService({ ...data.systemUser, user: data.user, server })
+
       if(data.createUser) {
+
+        if(data.systemUser.sshKey) {
+          const name = paramCase(data.server.name).replace("-", "") + makeKey(5)
+          const { data: sshKey } = await this.backend.create({
+            tableName: 'ssh-keys',
+            body: {
+              name,
+              serverId: data.server.id,
+              userId: data.user.id       
+            }
+          })
+
+          data.systemUser.sshKeyId = sshKey.id
+
+          systemUser.sshKey({
+            name,
+            key: data.systemUser.sshKey,
+            user: data.user
+          })
+
+          data.systemUser.sshKey = name
+          systemUser.setData({ ...data.systemUser, user: data.user, server })
+        }
+
         const { data: createdUser } = await this.backend.create({
           tableName: 'systemusers',
           body: {
             username: data.systemUser.username,
             serverId: data.server.id,
-            userId: data.user.id
+            userId: data.user.id,
+            ...(data.systemUser.sshKeyId ? { sshKeyId: data.systemUser.sshKeyId } : {})
           }
         })
 
         data.systemUser.id = createdUser.id
 
-        const su = {
-          username: data.systemUser.username,
-          password: data.systemUser.password,
-          server: {
-            ip: data.server.ip
-          }
-        }
-
-        const systemUser = new SystemUserService(su)
         await systemUser.create()
       }
 
@@ -179,6 +205,19 @@ class AppController implements Controller {
       const app = new AppService(data)
       await app.create()
 
+      //* create database for wordpress
+      if(data.type.includes('wp')) {
+        await this.backend.create({
+          tableName: 'databases',
+          body: {
+            name: paramCase(data.name),
+            appId: data.id,
+            serverId: data.server.id,
+            userId: data.user.id
+          }
+        })
+      }
+
       if(app.apps.includes(data.type)) {
         body = {
           [data.type]: true
@@ -194,6 +233,10 @@ class AppController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed create project ", e);
+      await this.backend.remove({
+        tableName: 'apps',
+        id: data.id
+      })
       // await this.backend.remove({ tableName: 'project', id: data.id })
       return res.status(500).json({ message: "Failed to create project", e });
     }
@@ -211,6 +254,57 @@ class AppController implements Controller {
     } catch (e) {
       console.log("Failed update app ", e);
       return res.status(500).json({ message: "Failed to update app" });
+    }
+  };
+
+  public deleteApp = async (req: Request, res: Response) => {
+    const { id } = req.params
+
+    try {
+      const { data: appData } = await this.backend.get({
+        tableName: 'apps',
+        id
+      })
+
+      const { data: { data: dbs } } = await this.backend.find({
+        tableName: 'databases',
+        query: {
+          serverId: appData.id
+        }
+      })
+
+      appData.user = req.user
+
+      const app = new AppService(appData)
+      await app.delete()
+
+      await Promise.all(dbs.map(db => {
+        this.backend.remove({
+          tableName: 'databases',
+          id: db.id
+        })
+      }));
+
+      await this.backend.remove({
+        tableName: 'apps',
+        id
+      })
+
+      if(app.apps.includes(appData.type)) {
+        const body = {
+          [appData.type]: false
+        }
+        await this.backend.patch({
+          tableName: 'servers',
+          id: appData.server.id,
+          body
+        })
+      }
+
+      return res.status(200).json({ message: "success" })
+    } catch (e) {
+      console.log("Failed delete app ", e);
+      return res.status(500).json({ message: "Failed to delete app" });
     }
   };
 

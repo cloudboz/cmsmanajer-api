@@ -2,6 +2,7 @@ import { IRouter, Request as ERequest } from 'express'
 
 export interface Request extends ERequest {
   user?: UserData
+  io?: any
 }
 // controller
 export interface Controller {
@@ -12,6 +13,7 @@ export interface Controller {
 
 export interface Data {
   user?: UserData
+  io?: any
 }
 
 // user

@@ -45,7 +45,7 @@ class SystemUserService {
       const systemUser = data || this.data;
       this.baseDir = this.getBaseDirectory(systemUser.user.id)
 
-      const { username, password } = systemUser
+      const { username, password, sshKey } = systemUser
 
       // generate base script then run
       this.script.copy()
@@ -53,6 +53,7 @@ class SystemUserService {
                   .setGroupVars({ 
                     ansible: {
                       username,
+                      sshKey
                     },
                     user: {
                       username,
@@ -78,6 +79,7 @@ class SystemUserService {
       
       this.script.setConfig({ data: sshKey })
       await this.script.createFile(name, key)
+      
 
       return Promise.resolve("Success");
     } catch (e) {

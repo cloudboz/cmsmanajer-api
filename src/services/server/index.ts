@@ -12,10 +12,12 @@ class ServerService {
   baseDir = null
   script = new ScriptService()
 
-  constructor(server?: ServerData) {
+  constructor(server?: ServerData, io?: any) {
     if (server) {
+      if (io) {
+        server.io = io
+      }
       this.setData(server);
-      // this.applyConfig(server);  
     }
   }
 
@@ -41,8 +43,8 @@ class ServerService {
     return baseDirectory;
   };
 
-  public connect = async (data?: ServerData): Promise<string> => {
-    try {
+  public connect = (data?: ServerData): string => {
+    
       const server = data || this.data;
       this.baseDir = this.getBaseDirectory(server.user.id)
       
@@ -59,12 +61,9 @@ class ServerService {
       this.script.copy()
                  .setIP(server.ip)
                  .setGroupVars({ ansible: sysUser })
-                //  .run('connect-server')
+                 .run('connect-server')
 
-      return Promise.resolve("Success");
-    } catch (e) {
-      return Promise.reject(e?.message);
-    }
+      return "Success";
   }
 
   public createUser = async (data?: ServerData): Promise<string> => {

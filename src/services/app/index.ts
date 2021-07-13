@@ -14,24 +14,12 @@ class AppService {
   apps = ["apache", "nginx", "mysql", "mongodb", "docker"]
   tags = {
     create: {
-      lamp: {
-        full: "lamp-full-install",
-        single: "lamp-create-single-app"
-      },
-      lemp: {
-        full: "lemp-full-install",
-        single: "lemp-create-single-app"
-      }
+      full: "full-install",
+      single: "create-single-app",
     },
     delete: {
-      lamp: {
-        full: "lamp-full-uninstall",
-        single: "lamp-delete-single-app"
-      },
-      lemp: {
-        full: "lemp-full-uninstall",
-        single: "lemp-delete-single-app"
-      }
+      full: "full-uninstall",
+      single: "delete-single-app",
     }
   }
 
@@ -69,26 +57,17 @@ class AppService {
       const app = data || this.data;
       this.baseDir = this.getBaseDirectory(app.user.id)
 
-      const { username, password, sshKey } = app.systemUser
       const { title, username: wpUser, password: wpPass, email } = app.wordpress || {}
-      
-      const sysUser = {
-        username,
-        password,
-        sshKey
-      }
 
       let tag = null
       if(this.apps.includes(app.type)) tag = app.type + "-install"
-      else tag = this.tags.create[app.type][app.init ? "full" : "single"]
-
-      if(app.wordpress) tag = "wp-" + tag
+      else tag = app.type + '-' + this.tags.create[app.init ? "full" : "single"]
 
       // generate base script then run
       this.script.copy()
                   .setIP(app.server.ip)
                   .setGroupVars({
-                    ansible: sysUser,
+                    ansible: app.systemUser,
                     app: {
                       name: app.name,
                       domain: app.domain,
@@ -113,6 +92,38 @@ class AppService {
     }
     
   }
+
+  public delete = async (data?: AppData): Promise<string> => {
+    try {
+      const app = data || this.data;
+      this.baseDir = this.getBaseDirectory(app.user.id)
+
+      let tag = null
+      if(this.apps.includes(app.type)) tag = app.type + "-uninstall"
+      else tag = app.type + '-' + this.tags.create[app.init ? "full" : "single"]
+
+      // generate base script
+      this.script.copy()
+                 .setIP(app.server.ip)
+                 .setGroupVars({
+                    ansible: app.systemUser,
+                    app: {
+                      name: app.name,
+                      domain: app.domain,
+                    }
+                  })
+                console.log(tag);
+
+      // delete database
+                //  .setVars()
+                //  .run('main')
+
+      return Promise.resolve("Success");
+    } catch (e) {
+      return Promise.reject(e?.message);
+    }
+  }
+  
 }
 
 export default AppService;
