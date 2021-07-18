@@ -361,23 +361,40 @@ class UserController implements Controller {
     data.user = req.user
 
     try {
-      await this.backend.create({
+      const { data: { total: exist } } = await this.backend.find({
+        tableName: 'systemusers',
+        query: {
+          username: data.username,
+          serverId: data.server.id
+        }
+      })
+
+      if(exist) return res.status(403).json({ message: "user already exist" })
+
+
+      const { data: createdUser } = await this.backend.create({
         tableName: "systemusers",
         body: {
           username: data.username,
           serverId: data.server.id,
-          userId: data.user.id
+          userId: data.user.id,
+          status: "loading"
         }
       })
 
+      data.id = createdUser.id
       data.user = req.user
 
-      const sysUser = new SystemUserService(data)
+      const sysUser = new SystemUserService(data, req.io)
       await sysUser.create()
 
-      return res.status(200).json({ message: "success" })
+      return res.status(200).json({ message: "success", data: { id: data.id } })
     } catch (e) {
       console.log("Failed to create user ", e);
+      this.backend.remove({
+        tableName: 'systemusers',
+        id: data.id
+      })
       return res.status(500).json({ message: e });
     }
   };

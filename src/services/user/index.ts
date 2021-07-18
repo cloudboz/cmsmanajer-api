@@ -1,18 +1,29 @@
 import { SystemUserData, ServerConfig, SSHKey } from "../../types";
+import { BACKEND_ACCESS_TOKEN } from '../../../config/global.json'
 
 // npm modules
 import fs from 'fs-extra';
 import path from 'path';
 import Git from "../git";
 import ScriptService from "../script";
+import BackendService from "../backend";
 
 class SystemUserService {
   data?: SystemUserData
   baseDir = null
+  git = new Git()
   script = new ScriptService()
+  backend = new BackendService({
+    header: {
+      Authorization: "Bearer " + BACKEND_ACCESS_TOKEN,
+    },
+  })
 
-  constructor(systemUser?: SystemUserData) {
+  constructor(systemUser?: SystemUserData, io?: any) {
     if (systemUser) {
+      if(io) {
+        systemUser.io = io
+      }
       this.setData(systemUser);
       // this.systemUserlyConfig(systemUser);  
     }
@@ -28,6 +39,7 @@ class SystemUserService {
   private applyConfig = (systemUser: SystemUserData) => {
     if (systemUser) {
       this.script.setConfig({ data: systemUser })
+      this.git.setConfig(systemUser)
     }
   }
 
@@ -47,20 +59,58 @@ class SystemUserService {
 
       const { username, password, sshKey } = systemUser
 
+      const { data: { data: users } } = await this.backend.find({
+        tableName: 'systemusers',
+        query: {
+          serverId: systemUser.server.id,
+          sort: {
+            createdAt: "1"
+          }
+        }
+      })
+
       // generate base script then run
       this.script.copy()
-                  .setIP(systemUser.server.ip)
-                  .setGroupVars({ 
-                    ansible: {
-                      username,
-                      sshKey
-                    },
+      this.git.use(systemUser.server.id + '/' + users[0].username)
+
+      this.script.setIP(systemUser.server.ip)
+                  .setGroupVars({
                     user: {
                       username,
                       password
-                    } 
+                    },
                   })
-                  // .run("create-system-user")
+                  .run("create-system-user", {
+                    onSuccess: () => {
+                      this.script.setGroupVars({
+                        ansible: {
+                          username,
+                          password
+                        }
+                      })
+
+                      this.git.commit(systemUser.server.id + '/' + username)
+                              .tag(systemUser.server.id + '/' + username)
+                              .merge()
+
+                      this.backend.patch({
+                        tableName: 'systemusers',
+                        id: systemUser.id,
+                        body: {
+                          status: "created"
+                        }
+                      })
+                    },
+                    onError: () => {
+                      this.backend.remove({
+                        tableName: 'systemusers',
+                        id: systemUser.id
+                      })
+                      this.git.rm()
+                    }
+                  })
+
+      
 
       return Promise.resolve("Success");
     } catch (e) {

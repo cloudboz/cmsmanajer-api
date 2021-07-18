@@ -1,5 +1,6 @@
 import * as express from 'express'
 import { paramCase } from 'param-case'
+import ping from 'ping'
 import makeKey from '../utils/makeKey'
 
 // types
@@ -8,7 +9,7 @@ import { Response } from 'express'
 
 
 // services
-import { BackendService, ServerService, DatabaseService, SystemUserService } from '../services'
+import { BackendService, ServerService, DatabaseService, SystemUserService, ScriptService } from '../services'
 
 // config
 import { BACKEND_ACCESS_TOKEN } from "../../config/global.json";
@@ -29,11 +30,10 @@ class ServerController implements Controller {
   public initRoutes() {
     this.router.get("/servers", this.getServers);
     this.router.get("/servers/:id", this.getServer);
-    this.router.patch("/servers/:id", this.editServer);
     this.router.get("/servers/:id/apps", this.getAppsByServer);
     this.router.get("/servers/:id/users", this.getUsersByServer);
-    // this.router.get("/servers/:id/status", this.getServerStatus);
     this.router.post("/servers", this.connectServer);
+    this.router.post("/servers/status", this.getServersStatus);
     this.router.patch("/servers/:id", this.updateServer);
     this.router.delete("/servers/:id", this.deleteServer);
     this.router.delete("/servers/:id/database", this.uninstallDatabase);
@@ -70,6 +70,22 @@ class ServerController implements Controller {
     } catch (e) {
       console.log("Failed get server ", e);
       return res.status(500).json({ message: "Failed to get server" });
+    }
+  };
+
+  public getServersStatus = async (req: Request, res: Response) => {
+    const { hosts } = req.body
+    
+    try {
+      const data = await Promise.all(hosts.map(async (host) => {
+        let res = await ping.promise.probe(host);
+        return({ ip: host, isAlive: res.alive })
+      }))
+
+      return res.status(200).json({ message: "success", data })
+    } catch (e) {
+      console.log("Failed get servers status", e);
+      return res.status(500).json({ message: "Failed to get servers status" });
     }
   };
 
@@ -146,6 +162,29 @@ class ServerController implements Controller {
     data.user = req.user
     
     try {
+      const { data: { total: IPExist } } = await this.backend.find({
+        tableName: 'servers',
+        query: {
+          ip: data.ip,
+          userId: data.user.id
+        }
+      })
+
+      if(IPExist) return res.status(403).json({ message: "server already connected" })
+
+      const { data: { total: nameExist } } = await this.backend.find({
+        tableName: 'servers',
+        query: {
+          name: data.name,
+          userId: data.user.id
+        }
+      })
+
+      if(nameExist) return res.status(403).json({ message: "server name must be unique" })
+
+      
+
+
       const { data: createdServer } = await this.backend.create({
         tableName: 'servers',
         body: {
@@ -193,12 +232,22 @@ class ServerController implements Controller {
 
       data.systemUser.id = createdUser.id
 
-      //TODO: handle multiple server
+      const script = new ScriptService()
+      data.dbRootPass = script.generatePassword()
+      await this.backend.create({
+        tableName: 'databases',
+        body: {
+          name: 'root' + makeKey(5),
+          username: 'root',
+          password: data.dbRootPass,
+          serverId: data.id
+        }
+      })
 
       const server = new ServerService(data, io)
       server.connect()
 
-      return res.status(200).json({ message: "success" })
+      return res.status(200).json({ message: "success", data: { id: data.id } })
     } catch (e) {
       console.log("Failed connect server ", e);
       await this.backend.remove({
@@ -213,30 +262,22 @@ class ServerController implements Controller {
     }
   };
 
-  public editServer = async (req: Request, res: Response) => {
-    const data = req.body
-    const { id } = req.params
-    
-    try {
-      await this.backend.patch({
-        tableName: 'servers',
-        id,
-        body: {
-          ...data,
-        }
-      })
-
-      return res.status(200).json({ message: "success" })
-    } catch (e) {
-      console.log("Failed to edit server ", e);
-      return res.status(500).json({ message: "Failed to edit server" });
-    }
-  };
+  
 
   public deleteServer = async (req: Request, res: Response) => {
     const { id } = req.params
 
     try {
+      this.backend.patch({
+        tableName: 'servers',
+        id,
+        body: {
+          status: 'loading'
+        }
+      })
+
+      //TODO: -----------------  populate -----------------
+
       const { data: serverData } = await this.backend.get({
         tableName: 'servers',
         id
@@ -249,40 +290,35 @@ class ServerController implements Controller {
         }
       })
 
-      const { data: { data: users } } = await this.backend.find({
-        tableName: 'systemusers',
+      const { data: { data: dbs } } = await this.backend.find({
+        tableName: 'databases',
         query: {
-          serverId: serverData.id
+          username: {
+            $ne: "root"
+          },
+          serverId: serverData.id,
         }
       })
 
+      const { data: { data: users } } = await this.backend.find({
+        tableName: 'systemusers',
+        query: {
+          serverId: serverData.id,
+          sort: {
+            createdAt: "1"
+          }
+        }
+      })
+
+      serverData.apps = apps
+      serverData.systemUsers = users
+      serverData.databases = dbs
       serverData.user = req.user
 
-      const server = new ServerService(serverData)
+      const server = new ServerService(serverData, req.io)
       await server.delete()
 
-      //TODO: delete apps
-      
-      apps.map(app => {
-        this.backend.remove({
-          tableName: 'apps',
-          id: app.id
-        })
-      })
-      
-      users.map(user => {
-        this.backend.remove({
-          tableName: 'systemusers',
-          id: user.id
-        })
-      })
-      
-      await this.backend.remove({
-        tableName: 'servers',
-        id
-      })
-
-      return res.status(200).json({ message: "success", data: serverData })
+      return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed delete server ", e);
       return res.status(500).json({ message: "Failed to delete server" });

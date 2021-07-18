@@ -6,7 +6,7 @@ import { Response } from 'express'
 
 
 // services
-import { BackendService, AppService, SystemUserService, ScriptService } from '../services'
+import { BackendService, AppService, SystemUserService, ScriptService, DatabaseService } from '../services'
 
 // config
 import { BACKEND_ACCESS_TOKEN } from "../../config/global.json";
@@ -69,16 +69,18 @@ class AppController implements Controller {
 
   public createApp = async (req: Request, res: Response) => {
     const data: AppData = req.body
+    const io = req.io
     let body = {}
     data.user = req.user
     data.init = false
     
     try {
-
       const { data: { total: exist } } = await this.backend.find({
         tableName: 'apps',
         query: {
-          name: data.name
+          name: data.name,
+          serverId: data.server.id,
+          userId: data.user.id
         }
       })
 
@@ -95,84 +97,114 @@ class AppController implements Controller {
        */
       //TODO: support ssh key
 
-
-      const systemUser = new SystemUserService({ ...data.systemUser, user: data.user, server })
-
       if(data.createUser) {
+        const systemUser = new SystemUserService({ ...data.systemUser, user: data.user, server })
 
-        if(data.systemUser.sshKey) {
-          const name = paramCase(data.server.name).replace("-", "") + makeKey(5)
-          const { data: sshKey } = await this.backend.create({
-            tableName: 'ssh-keys',
-            body: {
+        try {
+          if(data.systemUser.sshKey) {
+            const name = paramCase(data.server.name).replace("-", "") + makeKey(5)
+  
+            systemUser.sshKey({
               name,
+              key: data.systemUser.sshKey,
+              user: data.user
+            })
+  
+            const { data: sshKey } = await this.backend.create({
+              tableName: 'ssh-keys',
+              body: {
+                name,
+                serverId: data.server.id,
+                userId: data.user.id       
+              }
+            })
+  
+            data.systemUser.sshKeyId = sshKey.id
+  
+            data.systemUser.sshKey = name
+            systemUser.setData({ ...data.systemUser, user: data.user, server })
+          }
+    
+          await systemUser.create()
+  
+          const { data: createdUser } = await this.backend.create({
+            tableName: 'systemusers',
+            body: {
+              username: data.systemUser.username,
               serverId: data.server.id,
-              userId: data.user.id       
+              userId: data.user.id,
+              ...(data.systemUser.sshKeyId ? { sshKeyId: data.systemUser.sshKeyId } : {})
             }
           })
+  
+          data.systemUser.id = createdUser.id
 
-          data.systemUser.sshKeyId = sshKey.id
-
-          systemUser.sshKey({
-            name,
-            key: data.systemUser.sshKey,
-            user: data.user
+        } catch (e) {
+          await this.backend.remove({
+            tableName: 'systemusers',
+            id: data.systemUser.id,
           })
-
-          data.systemUser.sshKey = name
-          systemUser.setData({ ...data.systemUser, user: data.user, server })
+          return res.status(500).json({ message: "Failed to create app", e });
         }
+      }
 
-        const { data: createdUser } = await this.backend.create({
-          tableName: 'systemusers',
-          body: {
-            username: data.systemUser.username,
-            serverId: data.server.id,
-            userId: data.user.id,
-            ...(data.systemUser.sshKeyId ? { sshKeyId: data.systemUser.sshKeyId } : {})
-          }
-        })
 
-        data.systemUser.id = createdUser.id
-
-        await systemUser.create()
+      
+      const appFields = {
+        serverId: data.server.id,
+        systemuserId: data.systemUser.id,
+        userId: data.user.id
       }
 
       /*
-       * check if web server or mysql haven't installed before install lamp or lemp
+       * check if web server or mysql hasn't installed before install lamp or lemp
        * then generate root password for mysql
        */
-      if(data.type == "lamp" || data.type == "lemp"){
-        if(data.type == "lamp" && (!server.apache || !server.mysql)) {
+      if(data.type.includes("lamp") || data.type.includes("lemp")){
+        if(data.type.includes("lamp") && (!server.apache)) {
           data.init = true
           body = {
             apache: true
           }
+          await this.backend.create({
+            tableName: 'apps',
+            body: {
+              name: "Apache",
+              type: "apache",
+              ...appFields
+            }
+          })
         }
 
-        else if(data.type == "lemp" && (!server.nginx || !server.mysql)) {
+        else if(data.type.includes("lemp") && (!server.nginx)) {
           data.init = true
           body = {
             nginx: true
           }
+          await this.backend.create({
+            tableName: 'apps',
+            body: {
+              name: "Nginx",
+              type: "nginx",
+              ...appFields
+            }
+          })
         }
 
         if(!server.mysql) {
-          const script = new ScriptService()
-          data.server.dbRootPass = script.generatePassword()
-          await this.backend.create({
-            tableName: 'databases',
-            body: {
-              name: 'root_' + script.randomString(3),
-              username: 'root',
-              password: data.server.dbRootPass,
-              serverId: data.server.id
-            }
-          })
+          data.init = true
           body = {
             ...body,
             mysql: true
           }
+          await this.backend.create({
+            tableName: 'apps',
+            body: {
+              name: "MySQL",
+              type: "mysql",
+              ...appFields
+            }
+          })
         } else {
           const { data: { data: root } } = await this.backend.find({
             tableName: 'databases',
@@ -186,6 +218,11 @@ class AppController implements Controller {
         }
       }
 
+
+
+
+
+
       /*
        * store app data in database then
        * pass all data to app service
@@ -194,16 +231,15 @@ class AppController implements Controller {
         tableName: 'apps',
         body: {
           ...data,
-          serverId: data.server.id,
-          systemuserId: data.systemUser.id,
-          userId: data.user.id
+          ...appFields,
+          status: "loading"
         }
       })
 
       data.id = createdApp.id
 
-      const app = new AppService(data)
-      await app.create()
+      
+
 
       //* create database for wordpress
       if(data.type.includes('wp')) {
@@ -218,27 +254,27 @@ class AppController implements Controller {
         })
       }
 
+
+
+      const app = new AppService(data, io)
+
       if(app.apps.includes(data.type)) {
         body = {
           [data.type]: true
         }
       }
 
-      await this.backend.patch({
-        tableName: 'servers',
-        id: data.server.id,
-        body
-      })
+      await app.create(body)
 
-      return res.status(200).json({ message: "success" })
+      return res.status(200).json({ message: "success", data: { id: data.id, type: data.type } })
     } catch (e) {
-      console.log("Failed create project ", e);
+      console.log("Failed create app ", e);
       await this.backend.remove({
         tableName: 'apps',
         id: data.id
       })
-      // await this.backend.remove({ tableName: 'project', id: data.id })
-      return res.status(500).json({ message: "Failed to create project", e });
+      // await this.backend.remove({ tableName: 'app', id: data.id })
+      return res.status(500).json({ message: "Failed to create app", e });
     }
   };
 
@@ -261,45 +297,24 @@ class AppController implements Controller {
     const { id } = req.params
 
     try {
+      this.backend.patch({
+        tableName: 'apps',
+        id,
+        body: {
+          status: 'loading'
+        }
+      })
+
       const { data: appData } = await this.backend.get({
         tableName: 'apps',
         id
       })
 
-      const { data: { data: dbs } } = await this.backend.find({
-        tableName: 'databases',
-        query: {
-          serverId: appData.id
-        }
-      })
-
       appData.user = req.user
 
-      const app = new AppService(appData)
+      //* delete app
+      const app = new AppService(appData, req.io)
       await app.delete()
-
-      await Promise.all(dbs.map(db => {
-        this.backend.remove({
-          tableName: 'databases',
-          id: db.id
-        })
-      }));
-
-      await this.backend.remove({
-        tableName: 'apps',
-        id
-      })
-
-      if(app.apps.includes(appData.type)) {
-        const body = {
-          [appData.type]: false
-        }
-        await this.backend.patch({
-          tableName: 'servers',
-          id: appData.server.id,
-          body
-        })
-      }
 
       return res.status(200).json({ message: "success" })
     } catch (e) {

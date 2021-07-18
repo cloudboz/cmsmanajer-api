@@ -4,11 +4,14 @@ import { RegisterData } from "../../types"
 import Git from '../git';
 import Sendgrid from '../email/sendgrid';
 import EmailService from '../email';
+import ScriptService from '../script';
 
 class AuthService {
   data?: RegisterData = null
   baseDir? = null
   email = new EmailService(null)
+  git = new Git()
+  script = new ScriptService()
 
   constructor(user) {
     if (user) {
@@ -26,6 +29,8 @@ class AuthService {
   private applyConfig = (user: RegisterData) => {
     if (user) {
       this.email.setData(user)
+      this.git.setConfig({ user })
+      this.script.setConfig({ data: { user } })
     }
   }
 
@@ -39,10 +44,7 @@ class AuthService {
 
   private createConfigFile = () => {
     const ignore = 
-`optimiz/
-core/
-cleanup/
-databs/`
+``
     fs.writeFileSync(`${this.baseDir}/.gitignore`, ignore)
   }
 
@@ -53,6 +55,9 @@ databs/`
     const user = data || this.data;
 
     this.createBaseDirectory(user);
+    this.script.copy()
+    this.git.init()
+    
     // this.createConfigFile()
     try {
       await this.email.sendVerificationEmail()

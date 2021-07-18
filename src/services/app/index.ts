@@ -1,4 +1,5 @@
 import { AppConfig, AppData, ServerConfig, SystemUserData } from "../../types";
+import { BACKEND_ACCESS_TOKEN } from "../../../config/global.json"
 
 // npm modules
 import fs from 'fs-extra';
@@ -6,11 +7,20 @@ import path from 'path';
 import Git from "../git";
 import ScriptService from "../script";
 import { paramCase } from "param-case";
+import BackendService from "../backend";
+import DatabaseService from "../database";
+import sleep from "../../utils/sleep";
 
 class AppService {
   data?: AppData
   baseDir = null
+  git = new Git()
   script = new ScriptService()
+  backend = new BackendService({
+    header: {
+      Authorization: "Bearer " + BACKEND_ACCESS_TOKEN,
+    },
+  })
   apps = ["apache", "nginx", "mysql", "mongodb", "docker"]
   tags = {
     create: {
@@ -23,8 +33,11 @@ class AppService {
     }
   }
 
-  constructor(app: AppData) {
+  constructor(app: AppData, io?: any) {
     if (app) {
+      if (io) {
+        app.io = io
+      }
       this.setData(app);
       // this.applyConfig(app);  
     }
@@ -40,6 +53,7 @@ class AppService {
   private applyConfig = (app: AppData) => {
     if (app) {
       this.script.setConfig({ data: app })
+      this.git.setConfig(app)
     }
   }
 
@@ -52,9 +66,9 @@ class AppService {
     return baseDirectory;
   };
 
-  public create = async (data?: AppData): Promise<string> => {
+  public create = async (body): Promise<string> => {
     try {
-      const app = data || this.data;
+      const app = this.data;
       this.baseDir = this.getBaseDirectory(app.user.id)
 
       const { title, username: wpUser, password: wpPass, email } = app.wordpress || {}
@@ -65,9 +79,10 @@ class AppService {
 
       // generate base script then run
       this.script.copy()
-                  .setIP(app.server.ip)
+      this.git.use(app.server.id + '/' + app.systemUser.username)
+
+      this.script.setIP(app.server.ip)
                   .setGroupVars({
-                    ansible: app.systemUser,
                     app: {
                       name: app.name,
                       domain: app.domain,
@@ -82,12 +97,43 @@ class AppService {
                       password: app.server.dbRootPass
                     }
                   })
-                  // .run(tag)
+                  .run(tag, {
+                    onSuccess: () => {
+                      this.backend.patch({
+                        tableName: 'apps',
+                        id: app.id,
+                        body: {
+                          status: "created"
+                        }
+                      })
+                      this.backend.patch({
+                        tableName: 'servers',
+                        id: app.server.id,
+                        body
+                      })
+                      this.git.rm()
+                    },
+                    onError: () => {
+                      this.backend.remove({
+                        tableName: 'apps',
+                        id: app.id
+                      })
+                
+                      this.backend.patch({
+                        tableName: 'servers',
+                        id: app.server.id,
+                        body
+                      })
+                      this.git.rm()
+                    }
+                  })
 
-                  console.log(tag);
+      
+      console.log(tag);
                 
       return Promise.resolve("Success");
     } catch (e) {
+      this.git.rm()
       return Promise.reject(e?.message);
     }
     
@@ -100,26 +146,69 @@ class AppService {
 
       let tag = null
       if(this.apps.includes(app.type)) tag = app.type + "-uninstall"
-      else tag = app.type + '-' + this.tags.create[app.init ? "full" : "single"]
+      else tag = app.type + '-' + this.tags.delete[app.init ? "full" : "single"]
 
       // generate base script
       this.script.copy()
-                 .setIP(app.server.ip)
-                 .setGroupVars({
-                    ansible: app.systemUser,
-                    app: {
-                      name: app.name,
-                      domain: app.domain,
+      this.git.use(app.server.id + '/' + app.systemUser.username)
+
+      this.script.setIP(app.server.ip)
+                  .setGroupVars({
+                      app: {
+                        name: app.name,
+                        domain: app.domain,
+                      }
+                    })
+                  .run(tag, {
+                    afterRun: () => {
+                      this.git.rm()
+                    },
+                    identifier: app.user.id,
+                    onSuccess: async () => {
+                      if (app.databases.length) {
+                        for (const db of app.databases) {
+                          db.app = app
+                          db.user = app.user
+                          const database = new DatabaseService(db)
+                          database.delete()
+                          await sleep(4000)
+                        }
+                      }
+
+                      console.log("delete app");
+
+                      this.backend.remove({
+                        tableName: 'apps',
+                        id: app.id
+                      })
+
+                      if(this.apps.includes(app.type)) {
+                        const body = {
+                          [app.type]: false
+                        }
+                        this.backend.patch({
+                          tableName: 'servers',
+                          id: app.server.id,
+                          body
+                        })
+                      }
+                    },
+                    onError: () => {
+                      this.backend.patch({
+                        tableName: 'apps',
+                        id: app.id,
+                        body: {
+                          status: "failed"
+                        }
+                      })
                     }
                   })
-                console.log(tag);
 
-      // delete database
-                //  .setVars()
-                //  .run('main')
-
+      console.log(tag);
+      
       return Promise.resolve("Success");
     } catch (e) {
+      this.git.rm()
       return Promise.reject(e?.message);
     }
   }

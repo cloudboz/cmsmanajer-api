@@ -57,8 +57,8 @@ class DatabaseController implements Controller {
 
       return res.status(200).json({ message: "success", data })
     } catch (e) {
-      console.log("Failed get databases ", e);
-      return res.status(500).json({ message: "Failed to get databases" });
+      console.log("Failed get database ", e);
+      return res.status(500).json({ message: "Failed to get database" });
     }
   };
 
@@ -71,36 +71,42 @@ class DatabaseController implements Controller {
     data.user = req.user
     
     try {
-      // get mysql root password
-      const { data: { data: dbs } } = await this.backend.find({
+      const { data: { total: exist } } = await this.backend.find({
         tableName: 'databases',
         query: {
-          username: 'root',
-          serverId: data.server.id
+          name: data.name,
+          serverId: data.app.server.id
         }
       })
 
-      if(dbs.length) data.server.dbRootPass = dbs[0].password
+      if(exist) return res.status(403).json({ message: "database name must be unique" })
+
 
       // store data to database
       const { data: createdDatabase } = await this.backend.create({
         tableName: 'databases',
         body: {
           ...data,
-          serverId: data.server.id,
-          userId: data.user.id
+          appId: data.app.id,
+          serverId: data.app.server.id,
+          userId: data.user.id,
+          status: "loading"
         }
       })
 
       data.id = createdDatabase.id
 
-      const database = new DatabaseService(data)
-      await database.create()
+      const database = new DatabaseService(data, req.io)
+      database.create()
 
       return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed create project ", e);
-      return res.status(500).json({ message: "Failed to create project" });
+      console.log("Failed create database ", e);
+      this.backend.remove({
+        tableName: 'databases',
+        id: data.id
+      })
+      return res.status(500).json({ message: "Failed to create database" });
     }
   };
 
@@ -108,42 +114,34 @@ class DatabaseController implements Controller {
     const { id } = req.params
 
     try {
+      await this.backend.patch({
+        tableName: 'databases',
+        id,
+        body: {
+          status: "loading"
+        }
+      })
+
       const { data: db } = await this.backend.get({
         tableName: 'databases',
         id: id
       })
 
-      const { data: server } = await this.backend.get({
-        tableName: 'servers',
-        id: db.serverId
+      const { data: app } = await this.backend.get({
+        tableName: 'apps',
+        id: db.appId
       })
 
-      db.server = server
-
-      // get mysql root password
-      const { data: { data: root } } = await this.backend.find({
-        tableName: 'databases',
-        query: {
-          username: 'root',
-          serverId: db.serverId
-        }
-      })
-
-      if(root.length) db.server.dbRootPass = root[0].password
+      db.app = app
       db.user = req.user
 
-      const database = new DatabaseService(db)
+      const database = new DatabaseService(db, req.io)
       await database.delete()
 
-      await this.backend.remove({
-        tableName: 'databases',
-        id: id
-      })
-
-      return res.status(200).json({ message: "success", db })
+      return res.status(200).json({ message: "success" })
     } catch (e) {
-      console.log("Failed create project ", e);
-      return res.status(500).json({ message: "Failed to create project" });
+      console.log("Failed delete database ", e);
+      return res.status(500).json({ message: "Failed to delete database" });
     }
   };
 
