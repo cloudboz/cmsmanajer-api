@@ -92,11 +92,11 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success", data: user })
     } catch (e) {
       console.log("Failed to register ", e);
-      await this.backend.remove({
+      this.backend.remove({
         tableName: "users",
         id: data.id
       })
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Register failed" });
     }
   };
 
@@ -135,7 +135,7 @@ class UserController implements Controller {
       }
     } catch (e) {
       console.log("Failed to login ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Login failed" });
     }
   };
 
@@ -173,7 +173,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to verify email ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to verify email" });
     }
   }
 
@@ -210,7 +210,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to resend email ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to resend email" });
     }
   }
 
@@ -236,7 +236,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to send reset password instruction ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to send reset password instruction" });
     }
   }
 
@@ -278,7 +278,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to resend reset password instruction ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to resend reset password instruction" });
     }
   }
 
@@ -299,7 +299,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to verify token ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to verify token" });
     }
   }
 
@@ -335,7 +335,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to reset password ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to reset password" });
     }
   }
 
@@ -352,7 +352,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to send message ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to send message" });
     }
   };
 
@@ -409,7 +409,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success", data })
     } catch (e) {
       console.log("Failed to get user ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to get user" });
     }
   };
 
