@@ -28,10 +28,10 @@ class Git {
       cwd: this.baseDir,
     })
 
-    const configGit = 
-`# exclude scripts directory
-`
-    fs.writeFileSync(`${this.baseDir}/.gitignore`, configGit)
+//     const configGit = 
+// `# exclude scripts directory
+// `
+//     fs.writeFileSync(`${this.baseDir}/.gitignore`, configGit)
 
     console.log(`git initiated in user ${this.data.user.id}`)
 

@@ -31,13 +31,21 @@ class ScriptService {
     }
   }
 
+  public createDirectory = (dir: string) => {
+    const fullPath = path.resolve(this.userDir + '/' + dir);
+    if (!fs.existsSync(fullPath)) {
+      fs.mkdirSync(fullPath);
+    }
+    return this
+  }
+
   /**
    * It will copy base script folder without .git
    */
   public copy = () => {
-    fs.copySync(this.baseDir, this.userDir, { filter: (src) => {
-      console.log(src);
-      !src.includes(".git") || !src.includes("files") || !src.includes("group_vars")
+    const excludes = ['.git', 'files', 'docs']
+    fs.copySync(this.baseDir, this.userDir, { filter: (src: string) => {
+      return !excludes.some(ex => src.includes(ex))
     }})
     return this
   }

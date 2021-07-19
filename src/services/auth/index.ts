@@ -55,8 +55,8 @@ class AuthService {
     const user = data || this.data;
 
     this.createBaseDirectory(user);
-    this.script.copy()
-    this.git.init()
+    this.script.copy().createDirectory('files');
+    this.git.init().commit('base');
     
     // this.createConfigFile()
     try {
