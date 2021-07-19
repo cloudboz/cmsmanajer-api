@@ -95,35 +95,34 @@ class AppController implements Controller {
        * create new system user
        * if user wants to create and use new system user
        */
-      //TODO: support ssh key
 
       if(data.createUser) {
         const systemUser = new SystemUserService({ ...data.systemUser, user: data.user, server })
 
         try {
-          if(data.systemUser.sshKey) {
-            const name = paramCase(data.server.name).replace("-", "") + makeKey(5)
+          // if(data.systemUser.sshKey) {
+          //   const name = paramCase(data.server.name).replace("-", "") + makeKey(5)
   
-            systemUser.sshKey({
-              name,
-              key: data.systemUser.sshKey,
-              user: data.user
-            })
+          //   systemUser.sshKey({
+          //     name,
+          //     key: data.systemUser.sshKey,
+          //     user: data.user
+          //   })
   
-            const { data: sshKey } = await this.backend.create({
-              tableName: 'ssh-keys',
-              body: {
-                name,
-                serverId: data.server.id,
-                userId: data.user.id       
-              }
-            })
+          //   const { data: sshKey } = await this.backend.create({
+          //     tableName: 'ssh-keys',
+          //     body: {
+          //       name,
+          //       serverId: data.server.id,
+          //       userId: data.user.id       
+          //     }
+          //   })
   
-            data.systemUser.sshKeyId = sshKey.id
+          //   data.systemUser.sshKeyId = sshKey.id
   
-            data.systemUser.sshKey = name
-            systemUser.setData({ ...data.systemUser, user: data.user, server })
-          }
+          //   data.systemUser.sshKey = name
+          //   systemUser.setData({ ...data.systemUser, user: data.user, server })
+          // }
     
           await systemUser.create()
   
@@ -140,11 +139,11 @@ class AppController implements Controller {
           data.systemUser.id = createdUser.id
 
         } catch (e) {
-          await this.backend.remove({
+          this.backend.remove({
             tableName: 'systemusers',
             id: data.systemUser.id,
           })
-          return res.status(500).json({ message: "Failed to create app", e });
+          return res.status(500).json({ message: "Failed to create app: Error when creating system user" });
         }
       }
 
@@ -157,8 +156,8 @@ class AppController implements Controller {
       }
 
       /*
-       * check if web server or mysql hasn't installed before install lamp or lemp
-       * then generate root password for mysql
+       * check if web server or mysql hasn't installed
+       * before installing lamp, lemp, or wordpress.
        */
       if(data.type.includes("lamp") || data.type.includes("lemp")){
         if(data.type.includes("lamp") && (!server.apache)) {
@@ -219,8 +218,24 @@ class AppController implements Controller {
       }
 
 
-
-
+      /*
+       * check if web server hadn't been chosen,
+       * then update database.
+       */
+      if(!server.webServer) {
+        if(['apache', 'lamp'].includes(data.type)) {
+          body = {
+            ...body,
+            webServer: 'apache'
+          }
+        }
+        else if(['nginx', 'lemp'].includes(data.type)) {
+          body = {
+            ...body,
+            webServer: 'nginx'
+          }
+        }
+      }
 
 
       /*
