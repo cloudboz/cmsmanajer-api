@@ -166,7 +166,6 @@ class ServerController implements Controller {
         tableName: 'servers',
         query: {
           ip: data.ip,
-          userId: data.user.id
         }
       })
 
@@ -195,7 +194,6 @@ class ServerController implements Controller {
 
       data.id = createdServer.id
 
-      //TODO: support ssh key
 
       if(data.systemUser.sshKey) {
         const name = paramCase(data.name).replace("-", "") + makeKey(5)

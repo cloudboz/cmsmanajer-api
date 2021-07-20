@@ -63,7 +63,7 @@ class Git {
   }
 
   public use = (tag: string) => {
-    cp.execSync(`git checkout -b exec ${tag}`, {
+    cp.execSync(`git checkout -f -b exec ${tag}`, {
       cwd: this.baseDir,
     })
   }

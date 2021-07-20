@@ -279,7 +279,7 @@ class AppController implements Controller {
         }
       }
 
-      await app.create(body)
+      app.create(body)
 
       return res.status(200).json({ message: "success", data: { id: data.id, type: data.type } })
     } catch (e) {

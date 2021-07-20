@@ -118,12 +118,6 @@ class AppService {
                         tableName: 'apps',
                         id: app.id
                       })
-                
-                      this.backend.patch({
-                        tableName: 'servers',
-                        id: app.server.id,
-                        body
-                      })
                       this.git.rm()
                     }
                   })
