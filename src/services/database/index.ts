@@ -73,7 +73,9 @@ class DatabaseService {
                     },
                   })
                   .run("mysql-create-single-db", {
-                    identifier: database.user.id + "createdatabase",
+                    identifier: database.user.id,
+                    successMessage: `Database ${name} created`,
+                    errorMessage: `Failed to create ${name}`,
                     afterRun: () => {
                       this.git.rm()
                     },
@@ -125,7 +127,9 @@ class DatabaseService {
                     },
                   })
                   .run("mysql-delete-single-db", {
-                    identifier: database.user.id + "deletedatabase",
+                    identifier: database.user.id,
+                    successMessage: `Database ${name} deleted`,
+                    errorMessage: `Failed to delete ${name}`,
                     afterRun: () => {
                       this.git.rm()
                     },

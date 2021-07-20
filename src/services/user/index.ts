@@ -81,6 +81,8 @@ class SystemUserService {
                     },
                   })
                   .run("create-system-user", {
+                    identifier: systemUser.user.id,
+                    successMessage: `System user "${username}" created`,
                     onSuccess: () => {
                       this.script.setGroupVars({
                         ansible: {

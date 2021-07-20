@@ -43,7 +43,7 @@ class ScriptService {
    * It will copy base script folder without .git
    */
   public copy = () => {
-    const excludes = ['.git', this.baseDir + 'files', 'docs']
+    const excludes = ['.git', this.baseDir + '/files', 'docs']
     fs.copySync(this.baseDir, this.userDir, { filter: (src: string) => {
       return !excludes.some(ex => src.includes(ex))
     }})
@@ -96,21 +96,17 @@ class ScriptService {
 
   public run = (tag: string, options?: Options) => {
     const io = this.io
-    const id = options && options.identifier ? options?.identifier : this.id
+    const id = options?.identifier ? options?.identifier : this.id
 
     const spw = cp.spawn("ansible-playbook", ["cman.yml", "--tags", tag], {
       cwd: this.userDir
     });
-
-    // spw.stdout.once("data", function () {
-    //   if(options && options.afterRun) options.afterRun();
-    // });
     
     spw.stdout.on("data", function (data) {
       const stdout = data.toString();
       console.log(stdout);
       if (stdout.includes("TASK [Gathering Facts]")) {
-        if(options && options.afterRun) options.afterRun();
+        if(options?.afterRun) options.afterRun();
       }
       if (stdout.includes("TASK")) {
         if(io) io.sockets.emit("logs" + id, stdout)
@@ -128,16 +124,19 @@ class ScriptService {
     spw.on('exit', function(code){
       console.log('Exit code: ' + code); 
       if(code != 0) {
-        if(options && options.onError) options.onError();
-        if(io) io.sockets.emit("error" + id, "Exit code: " + code);
+        let message = "Exit code: " + code;
+        if(options?.onError) options.onError();
+        if(options?.errorMessage) message = options.errorMessage;
+        if(io) io.sockets.emit("error" + id, message);
       }
-      //EXIT TEST HERE
     });
 
     spw.on("close", function (code) {
       if(code == 0) {
-        if(options && options.onSuccess) options.onSuccess();
-        if(io) io.sockets.emit("done" + id, "done");
+        let message = "";
+        if(options?.onSuccess) options.onSuccess();
+        if(options?.successMessage) message = options.successMessage;
+        if(io) io.sockets.emit("done" + id, message);
       }
     });
   }
@@ -148,16 +147,17 @@ class ScriptService {
       await execAsync(`ansible-playbook cman.yml --tags "${tag}"`, {
         cwd: this.userDir
       })
-      if(options && options.onSuccess) options.onSuccess();
+      if(options?.onSuccess) options.onSuccess();
       if(io) io.sockets.emit("logs" + this.id, "")
     } catch (error) {
       console.log(error);
-      if(options && options.onError) options.onError();
+      if(options?.onError) options.onError();
     }
   }
 
   public createFile = (name: string, content: string) => {
     //! tempoprary change ssh key files folder to userDir
+    this.createDirectory('files')
     fs.writeFileSync(this.userDir + '/files/' + name + '.pem', content)
     cp.execSync(`chmod 400 ${name}.pem`, {
       cwd: this.userDir + '/files'

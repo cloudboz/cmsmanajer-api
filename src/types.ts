@@ -185,6 +185,8 @@ export interface Options {
   onError?: () => void
   afterRun?: () => void
   identifier?: string
+  successMessage?: string
+  errorMessage?: string
 }
 
 export interface SendgridOption {
