@@ -43,7 +43,7 @@ class ScriptService {
    * It will copy base script folder without .git
    */
   public copy = () => {
-    const excludes = ['.git', 'files', 'docs']
+    const excludes = ['.git', this.baseDir + 'files', 'docs']
     fs.copySync(this.baseDir, this.userDir, { filter: (src: string) => {
       return !excludes.some(ex => src.includes(ex))
     }})
