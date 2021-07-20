@@ -78,13 +78,16 @@ class AppController implements Controller {
       const { data: { total: exist } } = await this.backend.find({
         tableName: 'apps',
         query: {
-          name: data.name,
+          or: [
+            { name: data.name },
+            { domain: data.domain }
+          ],
           serverId: data.server.id,
-          userId: data.user.id
+          userId: data.user.id,
         }
       })
 
-      if(exist) return res.status(403).json({ message: "app name must be unique" })
+      if(exist) return res.status(403).json({ message: "Name or domain already used" })
 
       const { data: server } = await this.backend.get({
         tableName: "servers",

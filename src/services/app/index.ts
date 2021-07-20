@@ -98,6 +98,8 @@ class AppService {
                     }
                   })
                   .run(tag, {
+                    successMessage: `App '${app.name}' created`,
+                    errorMessage: `Failed to create ${app.name}`,
                     onSuccess: () => {
                       this.backend.patch({
                         tableName: 'apps',
@@ -158,6 +160,8 @@ class AppService {
                       this.git.rm()
                     },
                     identifier: app.user.id,
+                    successMessage: `App '${app.name}' deleted`,
+                    errorMessage: `Failed to delete ${app.name}`,
                     onSuccess: async () => {
                       if (app.databases.length) {
                         for (const db of app.databases) {
