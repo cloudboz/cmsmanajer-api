@@ -1,18 +1,29 @@
 import { DatabaseData, ServerConfig } from "../../types";
+import { BACKEND_ACCESS_TOKEN } from "../../../config/global.json"
 
 // npm modules
 import fs from 'fs-extra';
 import path from 'path';
 import Git from "../git";
 import ScriptService from "../script";
+import BackendService from "../backend";
 
 class DatabaseService {
   data?: DatabaseData
   baseDir = null
+  git = new Git()
   script = new ScriptService()
+  backend = new BackendService({
+    header: {
+      Authorization: "Bearer " + BACKEND_ACCESS_TOKEN,
+    },
+  })
 
-  constructor(database: DatabaseData) {
+  constructor(database?: DatabaseData, io?: any) {
     if (database) {
+      if (io) {
+        database.io = io
+      }
       this.setData(database);
       // this.databaselyConfig(database);  
     }
@@ -28,6 +39,7 @@ class DatabaseService {
   private applyConfig = (database: DatabaseData) => {
     if (database) {
       this.script.setConfig({ data: database })
+      this.git.setConfig(database)
     }
   }
 
@@ -45,26 +57,44 @@ class DatabaseService {
       const database = data || this.data;
       this.baseDir = this.getBaseDirectory(database.user.id)
 
-      const { name, username, password, server } = database
+      const { name, username, password, app } = database
 
 
       // generate base script then run
       this.script.copy()
-                  .setIP(server.ip)
+      this.git.use(app.server.id + '/' + app.systemUser.username)
+
+      this.script.setIP(app.server.ip)
                   .setGroupVars({
-                    ansible: {
-                      username: "ubuntu"
-                    },
                     app: {
                       name,
                       username,
                       password
                     },
-                    database: {
-                      password: server.dbRootPass
+                  })
+                  .run("mysql-create-single-db", {
+                    identifier: database.user.id,
+                    successMessage: `Database ${name} created`,
+                    errorMessage: `Failed to create ${name}`,
+                    afterRun: () => {
+                      this.git.rm()
+                    },
+                    onSuccess: () => {
+                      this.backend.patch({
+                        tableName: "databases",
+                        id: database.id,
+                        body: {
+                          status: "created"
+                        }
+                      })
+                    },
+                    onError: () => {
+                      this.backend.remove({
+                        tableName: 'databases',
+                        id: database.id
+                      })
                     }
                   })
-                //  .run("mysql-create-single-db")
 
       return Promise.resolve("Success");
     } catch (e) {
@@ -82,23 +112,95 @@ class DatabaseService {
       const database = data || this.data;
       this.baseDir = this.getBaseDirectory(database.user.id)
 
-      const { server, name, username, password } = database
+      const { app, name, username, password } = database
 
       // generate base script then run
       this.script.copy()
-                  .setIP(server.ip)
+      this.git.use(app.server.id + '/' + app.systemUser.username)
+
+      this.script.setIP(app.server.ip)
                   .setGroupVars({
-                    ansible: {},
                     app: {
                       name,
                       username,
                       password
                     },
-                    database: {
-                      password: server.dbRootPass
+                  })
+                  .run("mysql-delete-single-db", {
+                    identifier: database.user.id,
+                    successMessage: `Database ${name} deleted`,
+                    errorMessage: `Failed to delete ${name}`,
+                    afterRun: () => {
+                      this.git.rm()
+                    },
+                    onSuccess: () => {
+                      this.backend.remove({
+                        tableName: 'databases',
+                        id: database.id
+                      })
+                    },
+                    onError: () => {
+                      this.backend.patch({
+                        tableName: "databases",
+                        id: database.id,
+                        body: {
+                          status: "failed"
+                        }
+                      })
                     }
                   })
-                //  .run("mysql-delete-single-db")
+
+      return Promise.resolve("Success");
+    } catch (e) {
+      return Promise.reject(e?.message);
+    }
+  } 
+
+  /**
+   * delete multiple database
+   * 
+   */
+  public deleteMany = async (data?: DatabaseData[], index = 0): Promise<string> => {
+    try {
+      const database = data[index] || this.data;
+      this.baseDir = this.getBaseDirectory(database.user.id)
+
+      const { app, name, username, password } = database
+
+      // generate base script then run
+      this.script.copy()
+      this.git.use(app.server.id + '/' + app.systemUser.username)
+
+      this.script.setIP(app.server.ip)
+                  .setGroupVars({
+                    app: {
+                      name,
+                      username,
+                      password
+                    },
+                  })
+                  .run("mysql-delete-single-db", {
+                    identifier: database.user.id + "deletedatabase",
+                    afterRun: () => {
+                      this.git.rm()
+                      this.deleteMany(data, index + 1)
+                    },
+                    onSuccess: () => {
+                      this.backend.remove({
+                        tableName: 'databases',
+                        id: database.id
+                      })
+                    },
+                    onError: () => {
+                      this.backend.patch({
+                        tableName: "databases",
+                        id: database.id,
+                        body: {
+                          status: "failed"
+                        }
+                      })
+                    }
+                  })
 
       return Promise.resolve("Success");
     } catch (e) {

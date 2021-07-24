@@ -2,6 +2,7 @@ import { IRouter, Request as ERequest } from 'express'
 
 export interface Request extends ERequest {
   user?: UserData
+  io?: any
 }
 // controller
 export interface Controller {
@@ -12,6 +13,7 @@ export interface Controller {
 
 export interface Data {
   user?: UserData
+  io?: any
 }
 
 // user
@@ -40,6 +42,9 @@ export interface ServerData extends Data {
   stack?: string
   sshKey?: SSHKey
   systemUser?: SystemUserData
+  systemUsers?: SystemUserData[]
+  databases?: any[]
+  apps?: AppData[]
   dbRootPass?: string
 }
 
@@ -65,7 +70,9 @@ export interface AppData extends Data {
   createUser?: boolean
   init?: Boolean
   server: ServerData
+  databases?: DatabaseData[]
   systemUser?: SystemUserData
+  systemuserId?: string
   username?: String
   password?: String
   wordpress?: Wordpress
@@ -81,8 +88,7 @@ export interface DatabaseData extends Data {
   name?: string
   username?: string
   password?: string
-  appId?: string
-  server: ServerData
+  app?: AppData
 }
 
 export interface DatabaseConfig {
@@ -96,6 +102,7 @@ export interface SystemUserData extends Data {
   username?: string
   password?: string
   sshKeyId?: string
+  sshKey?: string
   server?: ServerData
 }
 
@@ -129,6 +136,7 @@ export interface ILogin {
   password: string
 }
 
+// script
 interface AnsibleVars {
   ansible_user: string
   ansible_ssh_pass?: string
@@ -165,11 +173,20 @@ export interface GroupVars extends AnsibleVars, AppVars, UserVars, MySQLRootVars
 }
 
 export interface GroupVarsArgs {
-  ansible: { username?: string, password?: string, sshKey?: string }
+  ansible?: { username?: string, password?: string, sshKey?: string }
   user?: UserVars
   database?: { password: string }
   app?: { name: string, username?: string, password?: string, domain?: string }
   wordpress?: { title: string, username: string, password: string, email: string }
+}
+
+export interface Options {
+  onSuccess?: () => void
+  onError?: () => void
+  afterRun?: () => void
+  identifier?: string
+  successMessage?: string
+  errorMessage?: string
 }
 
 export interface SendgridOption {

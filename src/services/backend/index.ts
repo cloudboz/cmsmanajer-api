@@ -44,7 +44,12 @@ class BackendService {
             }
           } else nonFieldQuery.push(`$${key}=${value}`);
         } else {
-          fieldQuery.push(`${key}=${value}`);
+          if (typeof value == 'string') fieldQuery.push(`${key}=${value}`);
+          else {
+            for (const [op, val] of Object.entries(value)) {
+              fieldQuery.push(`${key}[${op}]=${val}`);
+            }
+          }
         }
       }
 

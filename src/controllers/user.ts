@@ -92,11 +92,11 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success", data: user })
     } catch (e) {
       console.log("Failed to register ", e);
-      await this.backend.remove({
+      this.backend.remove({
         tableName: "users",
         id: data.id
       })
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Register failed" });
     }
   };
 
@@ -135,7 +135,7 @@ class UserController implements Controller {
       }
     } catch (e) {
       console.log("Failed to login ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Login failed" });
     }
   };
 
@@ -173,7 +173,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to verify email ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to verify email" });
     }
   }
 
@@ -210,7 +210,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to resend email ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to resend email" });
     }
   }
 
@@ -236,7 +236,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to send reset password instruction ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to send reset password instruction" });
     }
   }
 
@@ -278,7 +278,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to resend reset password instruction ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to resend reset password instruction" });
     }
   }
 
@@ -299,7 +299,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to verify token ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to verify token" });
     }
   }
 
@@ -335,7 +335,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to reset password ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to reset password" });
     }
   }
 
@@ -347,34 +347,54 @@ class UserController implements Controller {
 
       const response = JSON.parse(JSON.stringify(resp));
       if(response.responseCode == 553) return res.status(553).json({ message: "failed to send email" })
+      if(response.responseCode == 535) return res.status(535).json({ message: "failed to send email" })
   
       return res.status(200).json({ message: "success" })
     } catch (e) {
       console.log("Failed to send message ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to send message" });
     }
   };
 
   public createSysUser = async (req: Request, res: Response) => {
     const data = req.body
+    data.user = req.user
 
     try {
-      await this.backend.create({
-        tableName: "systemusers",
-        body: {
+      const { data: { total: exist } } = await this.backend.find({
+        tableName: 'systemusers',
+        query: {
           username: data.username,
           serverId: data.server.id
         }
       })
 
+      if(exist) return res.status(403).json({ message: "user already exist" })
+
+
+      const { data: createdUser } = await this.backend.create({
+        tableName: "systemusers",
+        body: {
+          username: data.username,
+          serverId: data.server.id,
+          userId: data.user.id,
+          status: "loading"
+        }
+      })
+
+      data.id = createdUser.id
       data.user = req.user
 
-      const sysUser = new SystemUserService(data)
+      const sysUser = new SystemUserService(data, req.io)
       await sysUser.create()
 
-      return res.status(200).json({ message: "success" })
+      return res.status(200).json({ message: "success", data: { id: data.id } })
     } catch (e) {
       console.log("Failed to create user ", e);
+      this.backend.remove({
+        tableName: 'systemusers',
+        id: data.id
+      })
       return res.status(500).json({ message: e });
     }
   };
@@ -389,7 +409,7 @@ class UserController implements Controller {
       return res.status(200).json({ message: "success", data })
     } catch (e) {
       console.log("Failed to get user ", e);
-      return res.status(500).json({ message: e });
+      return res.status(500).json({ message: "Failed to get user" });
     }
   };
 

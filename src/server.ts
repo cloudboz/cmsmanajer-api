@@ -9,7 +9,8 @@ import authentication from './middlewares/authentication'
 import { 
   ServerController,
   AppController,
-  UserController
+  UserController,
+  DatabaseController
 } from './controllers'
 
 const app = new App({
@@ -17,7 +18,8 @@ const app = new App({
   controllers: [
     new ServerController(),
     new AppController(),
-    new UserController()
+    new UserController(),
+    new DatabaseController()
   ],
   plugins: [],
   middleWares: [

@@ -1,21 +1,33 @@
-import { ServerData, SystemUserData } from "../../types";
+import { AppData, ServerData, SystemUserData } from "../../types";
+import { BACKEND_ACCESS_TOKEN } from "../../../config/global.json"
 
 // npm modules
-import fs from 'fs-extra';
-import cp from 'child_process';
 import path from 'path';
 import Git from "../git";
 import ScriptService from "../script";
+import BackendService from "../backend";
+import AppService from "../app";
+
+import sleep from "../../utils/sleep";
+import DatabaseService from "../database";
 
 class ServerService {
   data?: ServerData
   baseDir = null
+  git = new Git()
   script = new ScriptService()
+  backend = new BackendService({
+    header: {
+      Authorization: "Bearer " + BACKEND_ACCESS_TOKEN,
+    },
+  })
 
-  constructor(server?: ServerData) {
+  constructor(server?: ServerData, io?: any) {
     if (server) {
+      if (io) {
+        server.io = io
+      }
       this.setData(server);
-      // this.applyConfig(server);  
     }
   }
 
@@ -28,6 +40,7 @@ class ServerService {
 
   private applyConfig = (server: ServerData) => {
     if (server) {
+      this.git.setConfig(server)
       this.script.setConfig({ data: server })
     }
   }
@@ -41,30 +54,45 @@ class ServerService {
     return baseDirectory;
   };
 
-  public connect = async (data?: ServerData): Promise<string> => {
-    try {
+  public connect = (data?: ServerData): string => {
+    
       const server = data || this.data;
       this.baseDir = this.getBaseDirectory(server.user.id)
       
-      // this.git.commit(server.id)
-      //         .tag(server.id)
       
       const sysUser = {
         username: server.systemUser.username,
         password: server.systemUser.password,
-        sshKey: server.sshKey?.name
+        sshKey: server.systemUser.sshKey
       }
 
       // generate base script then run
       this.script.copy()
-                 .setIP(server.ip)
-                 .setGroupVars({ ansible: sysUser })
-                //  .run('connect-server')
+                  .setIP(server.ip)
+                  .setGroupVars({ 
+                    ansible: sysUser,
+                    database: {
+                      password: server.dbRootPass
+                    }
+                  })
+                  .run('connect-server', {
+                    onError: () => {
+                      this.backend.remove({
+                        tableName: 'servers',
+                        id: server.id
+                      })
+                      this.backend.remove({
+                        tableName: 'systemusers',
+                        id: server.systemUser.id
+                      })
+                      this.git.deleteTag(server.id + '/' + server.systemUser.username)
+                    }
+                  })
 
-      return Promise.resolve("Success");
-    } catch (e) {
-      return Promise.reject(e?.message);
-    }
+      this.git.commit(server.id + '/' + server.systemUser.username)
+              .tag(server.id + '/' + server.systemUser.username)
+
+      return "Success";
   }
 
   public createUser = async (data?: ServerData): Promise<string> => {
@@ -74,12 +102,8 @@ class ServerService {
 
       // generate base script
       this.script.copy()
-                 .setIP(server.ip)
-                //  .setGroupVars(server)
+                  .setIP(server.ip)
 
-      // delete database
-                //  .setVars()
-                //  .run('main')
 
       return Promise.resolve("Success");
     } catch (e) {
@@ -92,15 +116,102 @@ class ServerService {
     try {
       const server = data || this.data;
       this.baseDir = this.getBaseDirectory(server.user.id)
+      
+      const io = server.io
 
       // generate base script
       this.script.copy()
                  .setIP(server.ip)
-                //  .setGroupVars(server)
 
-      // delete database
-                //  .setVars()
-                //  .run('main')
+      this.git.use(server.id + '/' + server.systemUsers[0].username)
+
+
+      if (server.databases.length) {
+        for (const db of server.databases) {
+          const { name, username, password } = db
+
+          this.script.setGroupVars({
+            app: {
+              name,
+              username,
+              password
+            },
+          })
+
+          try {
+            console.log("Deleting database: " + name);
+            await this.script.exec("mysql-delete-single-db")
+  
+            this.backend.remove({
+              tableName: 'databases',
+              id: db.id
+            })
+          } catch (error) {
+            console.log("Error deleting database: " + name, error);
+          }
+        }
+      }
+
+      this.git.rm()
+
+      if (server.apps.length) {
+        for (const app of server.apps) {
+          this.backend.patch({
+            tableName: 'apps',
+            id: app.id,
+            body: {
+              status: 'loading'
+            }
+          })
+
+          app.user = server.user
+          app.systemUser = server.systemUsers.find(s => s.id == app.systemuserId)
+
+          const appService = new AppService(app, server.io)
+
+          let tag = null
+          if(appService.apps.includes(app.type)) tag = app.type + "-uninstall"
+          else tag = app.type + '-' + appService.tags.delete[app.init ? "full" : "single"]
+
+          this.git.use(app.server.id + '/' + app.systemUser.username)
+
+          this.script.setGroupVars({
+                        app: {
+                          name: app.name,
+                          domain: app.domain,
+                        }
+                      })
+
+          try {
+            console.log("Deleting app: " + app.name);
+            await this.script.exec(tag)
+            this.git.rm()
+  
+            this.backend.remove({
+              tableName: 'apps',
+              id: app.id
+            })
+          } catch (error) {
+            console.log("Error deleting app: " + app.name, error);
+            this.git.rm()
+          }
+          
+        }
+      }
+
+      server.systemUsers.map(user => {
+        this.backend.remove({
+          tableName: 'systemusers',
+          id: user.id
+        })
+      })
+
+      this.backend.remove({
+        tableName: 'servers',
+        id: server.id
+      })
+
+      if(io) io.sockets.emit("done" + server.user.id)
 
       return Promise.resolve("Success");
     } catch (e) {
