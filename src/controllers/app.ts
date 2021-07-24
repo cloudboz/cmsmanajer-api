@@ -225,7 +225,7 @@ class AppController implements Controller {
        * check if web server hadn't been chosen,
        * then update database.
        */
-      if(server.webServer == "") {
+      if(!server.webServer) {
         if(['apache', 'lamp'].includes(data.type)) {
           body = {
             ...body,
@@ -278,6 +278,7 @@ class AppController implements Controller {
 
       if(app.apps.includes(data.type)) {
         body = {
+          ...body,
           [data.type]: true
         }
       }
